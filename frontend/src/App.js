@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import ChatBot from './components/ChatBot';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -24,9 +25,13 @@ function App() {
                   <Dashboard />
                 </ProtectedRoute>
               } 
-            />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            />            <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Routes>
+          
+          {/* Add ChatBot for authenticated users */}
+          <ProtectedRoute>
+            <ChatBot />
+          </ProtectedRoute>
           
           <ToastContainer
             position="top-right"

@@ -24,6 +24,7 @@ services:
       - SPRING_DATA_MONGODB_HOST=mongodb
       - SPRING_DATA_MONGODB_PORT=27017
       - SPRING_DATA_MONGODB_DATABASE=todoapp
+      - OLLAMA_BASE_URL=http://ollama:11434
     depends_on:
       - mongodb
     networks:
@@ -48,9 +49,22 @@ services:
       - backend
     networks:
       - smart-task-network
+  ollama:
+    image: ollama/ollama:latest
+    container_name: smart-task-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - smart-task-network
+    environment:
+      - OLLAMA_ORIGINS=*
 
 volumes:
   mongodb_data:
+  ollama_data:
 
 networks:
   smart-task-network:

@@ -15,6 +15,7 @@ public class TaskRequest {
 
     private TaskStatus status;
     private LocalDateTime dueDate;
+    private String priority;
 
     // Constructors
     public TaskRequest() {}
@@ -57,5 +58,13 @@ public class TaskRequest {
 
     public void setDueDate(LocalDateTime dueDate) {
         this.dueDate = dueDate;
+    }
+
+    public String getPriority() {
+        return priority;
+    }
+
+    public void setPriority(String priority) {
+        this.priority = priority;
     }
 }

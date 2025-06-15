@@ -12,10 +12,9 @@ public class TaskResponse {
     private LocalDateTime dueDate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String priority;
 
-    public TaskResponse() {}
-
-    public TaskResponse(Task task) {
+    public TaskResponse() {}    public TaskResponse(Task task) {
         this.id = task.getId();
         this.title = task.getTitle();
         this.description = task.getDescription();
@@ -23,6 +22,7 @@ public class TaskResponse {
         this.dueDate = task.getDueDate();
         this.createdAt = task.getCreatedAt();
         this.updatedAt = task.getUpdatedAt();
+        this.priority = task.getPriority();
     }
 
     // Getters and Setters
@@ -80,5 +80,13 @@ public class TaskResponse {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getPriority() {
+        return priority;
+    }
+
+    public void setPriority(String priority) {
+        this.priority = priority;
     }
 }

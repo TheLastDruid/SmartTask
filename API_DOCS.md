@@ -1,13 +1,31 @@
 # SmartTask API Documentation
 
+> **Status**: All endpoints tested and working as of June 15, 2025 ✅
+
 ## Base URL
-- Development: `http://localhost:8080`
-- Production: `https://api.yourdomain.com`
+- **Development**: `http://localhost:8080`
+- **Production**: `https://api.yourdomain.com`
 
 ## Authentication
 All protected endpoints require a Bearer token in the Authorization header:
 ```
 Authorization: Bearer <your-jwt-token>
+```
+
+### Quick Test Commands
+```bash
+# Health check (no auth required)
+curl http://localhost:8080/health
+
+# Register new user (no auth required)  
+curl -X POST http://localhost:8080/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"firstName":"John","lastName":"Doe","email":"john@example.com","password":"password123"}'
+
+# Login (no auth required)
+curl -X POST http://localhost:8080/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"john@example.com","password":"password123"}'
 ```
 
 ## Response Format

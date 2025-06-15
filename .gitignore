@@ -112,3 +112,14 @@ $RECYCLE.BIN/
 # Production build
 /frontend/build
 /frontend/dist
+
+# Test scripts and temporary files
+test_*.ps1
+*-fixed.*
+*-backup.*
+*.bak
+*.tmp
+
+# Environment and configuration backups
+docker-compose-*.yml
+!docker-compose.yml
