@@ -30,9 +30,7 @@ public class AuthController {
             error.put("message", "Invalid credentials");
             return ResponseEntity.badRequest().body(error);
         }
-    }
-
-    @PostMapping("/register")
+    }    @PostMapping("/register")
     public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest signUpRequest) {
         try {
             AuthResponse response = authService.registerUser(signUpRequest);
@@ -42,5 +40,12 @@ public class AuthController {
             error.put("message", e.getMessage());
             return ResponseEntity.badRequest().body(error);
         }
+    }
+
+    @GetMapping("/verify")
+    public ResponseEntity<?> verifyToken() {
+        Map<String, String> response = new HashMap<>();
+        response.put("status", "valid");
+        return ResponseEntity.ok(response);
     }
 }

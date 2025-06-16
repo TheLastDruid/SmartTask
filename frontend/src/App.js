@@ -9,29 +9,51 @@ import ChatBot from './components/ChatBot';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import Debug from './pages/Debug';
+import Test from './pages/Test';
 
 function App() {
+  console.log('App component rendered');
+  
   return (
     <AuthProvider>
       <Router>
         <div className="App">
           <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route 
+            <Route path="/login" element={
+              <div>
+                {console.log('Login route accessed')}
+                <Login />
+              </div>
+            } />            <Route path="/register" element={
+              <div>
+                {console.log('Register route accessed')}
+                <Register />
+              </div>            } />
+            <Route path="/debug" element={<Debug />} />
+            <Route path="/test" element={<Test />} />
+            <Route
               path="/dashboard" 
               element={
                 <ProtectedRoute>
                   <Dashboard />
                 </ProtectedRoute>
               } 
-            />            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
+            />
+            <Route path="/" element={
+              <div>
+                {console.log('Root route accessed, redirecting to dashboard')}
+                <Navigate to="/dashboard" replace />
+              </div>
+            } />          </Routes>
           
-          {/* Add ChatBot for authenticated users */}
+          {/* Add ChatBot for authenticated users - only show on dashboard */}
+          {/* Temporarily commented out to fix routing issues */}
+          {/*
           <ProtectedRoute>
             <ChatBot />
           </ProtectedRoute>
+          */}
           
           <ToastContainer
             position="top-right"

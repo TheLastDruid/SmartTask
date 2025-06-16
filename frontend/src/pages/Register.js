@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 
 const Register = () => {
+  console.log('Register component rendered!');
+  
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -13,9 +15,25 @@ const Register = () => {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const { register, isAuthenticated, loading } = useAuth();  const navigate = useNavigate();
+  // Add extensive logging to debug the authentication state
+  console.log('Register component - Auth state:', {
+    isAuthenticated,
+    loading,
+    hasToken: !!localStorage.getItem('token'),
+    currentPath: window.location.pathname
+  });
 
-  const { register } = useAuth();
-  const navigate = useNavigate();
+  // Temporarily disabled to debug register page access
+  /*
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      console.log('User already authenticated, redirecting to dashboard');
+      toast.info('You are already logged in. Redirecting to dashboard...');
+      setTimeout(() => navigate('/dashboard', { replace: true }), 2000);
+    }
+  }, [isAuthenticated, loading, navigate]);
+  */
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -65,7 +83,6 @@ const Register = () => {
 
     return newErrors;
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -76,20 +93,61 @@ const Register = () => {
     }
 
     setIsLoading(true);
+    setErrors({}); // Clear previous errors
+    
     try {
       const { confirmPassword, ...registerData } = formData;
+      console.log('Submitting registration data:', registerData); // Debug log
+      
       await register(registerData);
       toast.success('Account created successfully!');
       navigate('/dashboard');
     } catch (error) {
-      console.error('Registration error:', error);
-      const message = error.response?.data?.message || 'Registration failed. Please try again.';
+      console.error('Registration error:', error); // Debug log
+      console.error('Error response:', error.response); // Debug log
+      
+      let message = 'Registration failed. Please try again.';
+      
+      if (error.response?.data?.message) {
+        message = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        message = error.response.data.error;
+      } else if (error.message) {
+        message = error.message;
+      }
+      
       toast.error(message);
       setErrors({ general: message });
     } finally {
       setIsLoading(false);
-    }
-  };
+    }  };
+  // Show loading or redirect message if authenticated
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Temporarily disabled to debug register page access
+  /*
+  if (isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="bg-blue-50 border border-blue-200 text-blue-600 px-6 py-4 rounded-md">
+            <p className="font-medium">You are already logged in!</p>
+            <p className="text-sm mt-1">Redirecting to dashboard...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  */
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -102,7 +160,7 @@ const Register = () => {
             Or{' '}
             <Link
               to="/login"
-              className="font-medium text-primary-600 hover:text-primary-500"
+              className="font-medium text-blue-600 hover:text-blue-500"
             >
               sign in to existing account
             </Link>
@@ -128,8 +186,7 @@ const Register = () => {
                   type="text"
                   autoComplete="given-name"
                   value={formData.firstName}
-                  onChange={handleChange}
-                  className={`mt-1 appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm ${
+                  onChange={handleChange}                  className={`mt-1 appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm ${
                     errors.firstName ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="First name"
@@ -147,8 +204,7 @@ const Register = () => {
                   type="text"
                   autoComplete="family-name"
                   value={formData.lastName}
-                  onChange={handleChange}
-                  className={`mt-1 appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm ${
+                  onChange={handleChange}                  className={`mt-1 appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm ${
                     errors.lastName ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="Last name"
@@ -167,8 +223,7 @@ const Register = () => {
                 type="email"
                 autoComplete="email"
                 value={formData.email}
-                onChange={handleChange}
-                className={`mt-1 appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm ${
+                onChange={handleChange}                className={`mt-1 appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm ${
                   errors.email ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="Enter your email"
@@ -186,8 +241,7 @@ const Register = () => {
                 type="password"
                 autoComplete="new-password"
                 value={formData.password}
-                onChange={handleChange}
-                className={`mt-1 appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm ${
+                onChange={handleChange}                className={`mt-1 appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm ${
                   errors.password ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="Enter your password"
@@ -205,8 +259,7 @@ const Register = () => {
                 type="password"
                 autoComplete="new-password"
                 value={formData.confirmPassword}
-                onChange={handleChange}
-                className={`mt-1 appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm ${
+                onChange={handleChange}                className={`mt-1 appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm ${
                   errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="Confirm your password"
@@ -218,8 +271,7 @@ const Register = () => {
           <div>
             <button
               type="submit"
-              disabled={isLoading}
-              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 ${
+              disabled={isLoading}              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
                 isLoading ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >

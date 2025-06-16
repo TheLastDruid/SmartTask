@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
@@ -13,8 +13,16 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const { login } = useAuth();
+  const { login, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
+  // Redirect authenticated users to dashboard
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      console.log('User already authenticated, redirecting to dashboard');
+      toast.info('You are already logged in. Redirecting to dashboard...');
+      setTimeout(() => navigate('/dashboard', { replace: true }), 2000);
+    }
+  }, [isAuthenticated, loading, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -68,8 +76,32 @@ const Login = () => {
       setErrors({ general: message });
     } finally {
       setIsLoading(false);
-    }
-  };
+    }  };
+
+  // Show loading or redirect message if authenticated
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="bg-blue-50 border border-blue-200 text-blue-600 px-6 py-4 rounded-md">
+            <p className="font-medium">You are already logged in!</p>
+            <p className="text-sm mt-1">Redirecting to dashboard...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -184,15 +216,18 @@ const Login = () => {
                   <ArrowRight className="h-5 w-5 ml-2" />
                 </>
               )}
-            </button>
-
-            {/* Sign up link */}
+            </button>            {/* Sign up link */}
             <div className="text-center">
               <p className="text-sm text-gray-600">
-                Don't have an account?{' '}
-                <Link
+                Don't have an account?{' '}                <Link
                   to="/register"
                   className="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200"
+                  onClick={(e) => {
+                    console.log('Register link clicked!');
+                    console.log('Event:', e);
+                    console.log('Target:', e.target);
+                    console.log('Current location:', window.location.href);
+                  }}
                 >
                   Create one now
                 </Link>

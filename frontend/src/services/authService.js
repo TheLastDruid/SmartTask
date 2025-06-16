@@ -25,10 +25,20 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    console.log('Response interceptor error:', error);
+    console.log('Error config URL:', error.config?.url);
+    console.log('Error status:', error.response?.status);
+    
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Don't redirect if this is a token verification request
+      if (!error.config.url.includes('/auth/verify')) {
+        console.log('401 error not from /auth/verify, redirecting to login');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      } else {
+        console.log('401 error from /auth/verify, not redirecting');
+      }
     }
     return Promise.reject(error);
   }
@@ -36,11 +46,18 @@ api.interceptors.response.use(
 
 export const authService = {
   login: (email, password) => {
+    console.log('AuthService: Attempting login for:', email); // Debug log
     return api.post('/auth/login', { email, password });
   },
 
   register: (userData) => {
+    console.log('AuthService: Attempting registration for:', userData.email); // Debug log
+    console.log('AuthService: Registration data:', userData); // Debug log
     return api.post('/auth/register', userData);
+  },
+
+  verifyToken: () => {
+    return api.get('/auth/verify');
   },
 
   setAuthToken: (token) => {
