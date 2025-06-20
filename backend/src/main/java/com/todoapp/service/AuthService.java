@@ -14,6 +14,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.UUID;
+
 @Service
 public class AuthService {
 
@@ -24,25 +28,28 @@ public class AuthService {
     private UserRepository userRepository;
 
     @Autowired
-    private PasswordEncoder encoder;
-
-    @Autowired
+    private PasswordEncoder encoder;    @Autowired
     private JwtUtils jwtUtils;
 
-    public AuthResponse authenticateUser(LoginRequest loginRequest) {
+    @Autowired
+    private EmailService emailService;    public AuthResponse authenticateUser(LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
             new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = jwtUtils.generateJwtToken(loginRequest.getEmail());
 
         User user = userRepository.findByEmail(loginRequest.getEmail())
             .orElseThrow(() -> new RuntimeException("User not found"));
 
-        return new AuthResponse(jwt, user.getEmail(), user.getFirstName(), user.getLastName());
-    }
+        // Check if email is verified
+        if (!user.isEmailVerified()) {
+            throw new RuntimeException("Please verify your email address before logging in");
+        }
 
-    public AuthResponse registerUser(RegisterRequest signUpRequest) {
+        String jwt = jwtUtils.generateJwtToken(loginRequest.getEmail());
+
+        return new AuthResponse(jwt, user.getEmail(), user.getFirstName(), user.getLastName());
+    }    public AuthResponse registerUser(RegisterRequest signUpRequest) {
         if (userRepository.existsByEmail(signUpRequest.getEmail())) {
             throw new RuntimeException("Error: Email is already taken!");
         }
@@ -53,12 +60,25 @@ public class AuthService {
                            signUpRequest.getFirstName(),
                            signUpRequest.getLastName());
 
+        // Generate email verification token
+        String verificationToken = UUID.randomUUID().toString();
+        user.setEmailVerificationToken(verificationToken);
+        user.setEmailVerificationTokenExpiry(LocalDateTime.now().plusHours(24));
+        user.setEmailVerified(false);
+
         userRepository.save(user);
 
-        // Generate JWT token
-        String jwt = jwtUtils.generateJwtToken(user.getEmail());
+        // Send verification email
+        try {
+            emailService.sendVerificationEmail(user.getEmail(), user.getFirstName(), verificationToken);
+        } catch (Exception e) {
+            // If email sending fails, we still want to create the user
+            // They can request another verification email later
+            System.err.println("Failed to send verification email: " + e.getMessage());
+        }
 
-        return new AuthResponse(jwt, user.getEmail(), user.getFirstName(), user.getLastName());
+        // Don't generate JWT token yet - user needs to verify email first
+        return new AuthResponse(null, user.getEmail(), user.getFirstName(), user.getLastName());
     }
 
     public boolean validateToken(String token) {
@@ -67,5 +87,46 @@ public class AuthService {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    public boolean verifyEmail(String token) {
+        Optional<User> userOptional = userRepository.findByEmailVerificationToken(token);
+        
+        if (userOptional.isEmpty()) {
+            return false;
+        }
+        
+        User user = userOptional.get();
+        
+        // Check if token is expired
+        if (user.getEmailVerificationTokenExpiry().isBefore(LocalDateTime.now())) {
+            return false;
+        }
+        
+        // Verify the email
+        user.setEmailVerified(true);
+        user.setEmailVerificationToken(null);
+        user.setEmailVerificationTokenExpiry(null);
+        userRepository.save(user);
+        
+        return true;
+    }
+
+    public void resendVerificationEmail(String email) {
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.isEmailVerified()) {
+            throw new RuntimeException("Email is already verified");
+        }
+
+        // Generate new verification token
+        String verificationToken = UUID.randomUUID().toString();
+        user.setEmailVerificationToken(verificationToken);
+        user.setEmailVerificationTokenExpiry(LocalDateTime.now().plusHours(24));
+        userRepository.save(user);
+
+        // Send verification email
+        emailService.sendVerificationEmail(user.getEmail(), user.getFirstName(), verificationToken);
     }
 }

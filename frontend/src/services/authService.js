@@ -66,6 +66,14 @@ export const authService = {
     return api.get('/api/auth/verify');
   },
 
+  verifyEmail: (token) => {
+    return api.get(`/api/auth/verify-email?token=${token}`);
+  },
+
+  resendVerificationEmail: (email) => {
+    return api.post('/api/auth/resend-verification', { email });
+  },
+
   setAuthToken: (token) => {
     if (token) {
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;

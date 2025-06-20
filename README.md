@@ -37,6 +37,7 @@ SmartTask is a modern, full-stack task management application that combines trad
 ### Prerequisites
 - Java 17+
 - Node.js 16+
+- pnpm (for frontend package management)
 - Docker & Docker Compose
 - Groq API Key (free from [console.groq.com](https://console.groq.com/keys))
 
@@ -46,7 +47,12 @@ git clone https://github.com/TheLastDruid/SmartTask.git
 cd SmartTask
 ```
 
-### 2. Setup Groq API
+### 2. Install pnpm (if not already installed)
+```bash
+npm install -g pnpm
+```
+
+### 3. Setup Groq API
 ```bash
 # For Windows
 .\setup_groq.ps1 YOUR_GROQ_API_KEY
@@ -55,7 +61,7 @@ cd SmartTask
 ./setup_groq.sh YOUR_GROQ_API_KEY
 ```
 
-### 3. Start the Application
+### 4. Start the Application
 ```bash
 # Using Docker (Recommended)
 docker-compose up --build
@@ -64,12 +70,12 @@ docker-compose up --build
 start.bat  # Windows
 ```
 
-### 4. Access the Application
+### 5. Access the Application
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8080
 - **MongoDB**: localhost:27017
 
-### 5. Login
+### 6. Login
 Default test credentials:
 - **Email**: test@test.com
 - **Password**: investor
@@ -112,8 +118,8 @@ cd backend
 ### Frontend Development
 ```bash
 cd frontend
-npm install
-npm start
+pnpm install
+pnpm start
 ```
 
 ### Running Tests
@@ -124,7 +130,7 @@ cd backend
 
 # Frontend tests
 cd frontend
-npm test
+pnpm test
 ```
 
 ## 🐳 Docker Deployment
@@ -186,7 +192,7 @@ SmartTask/
 │   │   ├── pages/         # Page components
 │   │   ├── services/      # API services
 │   │   └── context/       # React context
-│   └── package.json       # NPM dependencies
+│   └── package.json       # pnpm dependencies
 ├── docker-compose.yml     # Development setup
 ├── docker-compose.prod.yml # Production setup
 ├── setup_groq.ps1        # Windows Groq setup

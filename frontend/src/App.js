@@ -9,16 +9,15 @@ import ChatBot from './components/ChatBot';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-import Debug from './pages/Debug';
-import Test from './pages/Test';
+import EmailVerification from './pages/EmailVerification';
+import EmailVerificationRequired from './pages/EmailVerificationRequired';
 
 function App() {
   console.log('App component rendered');
   
   return (
     <AuthProvider>
-      <Router>
-        <div className="App">
+      <Router>        <div className="App">
           <Routes>
             <Route path="/login" element={
               <div>
@@ -29,9 +28,10 @@ function App() {
               <div>
                 {console.log('Register route accessed')}
                 <Register />
-              </div>            } />
-            <Route path="/debug" element={<Debug />} />
-            <Route path="/test" element={<Test />} />
+              </div>
+            } />
+            <Route path="/verify-email" element={<EmailVerification />} />
+            <Route path="/email-verification-required" element={<EmailVerificationRequired />} />
             <Route
               path="/dashboard" 
               element={
@@ -45,7 +45,8 @@ function App() {
                 {console.log('Root route accessed, redirecting to dashboard')}
                 <Navigate to="/dashboard" replace />
               </div>
-            } />          </Routes>
+            } />
+          </Routes>
             {/* Add ChatBot for authenticated users - only show on dashboard */}
           <ProtectedRoute>
             <ChatBot />

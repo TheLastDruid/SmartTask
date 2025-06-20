@@ -1,5 +1,18 @@
-import React, { createContext, useContext, useReducer, useEffect, useMemo } from 'react';
-import PropTypes from 'prop-types';
+import React, { createContext, useContext, useReducer, useEffect, useMemo } from 'react';        } catch (error) {
+          console.log('Token verification failed:', error.response?.status, error.message);
+          // Clear token if it's invalid or if there's an authentication error
+          if (error.response?.status === 401 || error.response?.status === 403) {
+            console.log('Clearing invalid token and user data');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            authService.removeAuthToken();
+            dispatch({ type: 'AUTH_LOGOUT' });
+          } else {
+            // Network error - keep token but mark as not authenticated for now
+            console.log('Network error during token verification, keeping token but marking as not authenticated');
+            dispatch({ type: 'SET_LOADING', payload: false });
+          }
+        }ypes from 'prop-types';
 import { authService } from '../services/authService';
 
 const AuthContext = createContext();
@@ -127,8 +140,7 @@ export const AuthProvider = ({ children }) => {
       dispatch({ type: 'SET_LOADING', payload: false });
       throw error;
     }
-  };
-  const register = async (userData) => {
+  };  const register = async (userData) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       console.log('Registration data:', userData); // Debug log
@@ -138,6 +150,13 @@ export const AuthProvider = ({ children }) => {
       // Handle the response structure from backend
       const { token, email, firstName, lastName } = response.data;
       const user = { email, firstName, lastName };
+      
+      // If no token is returned, the user needs to verify their email
+      if (!token) {
+        dispatch({ type: 'SET_LOADING', payload: false });
+        // Don't set authentication - user needs to verify email first
+        return { ...response, emailVerificationRequired: true };
+      }
       
       localStorage.setItem('user', JSON.stringify(user));
       dispatch({

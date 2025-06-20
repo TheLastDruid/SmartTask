@@ -22,12 +22,17 @@ This guide will help you replace the Ollama integration with Groq API for faster
 ```
 
 #### Option B: Manual Configuration
-1. Open `.env` file and add:
-   ```
-   GROQ_API_KEY=your-groq-api-key-here
+1. Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
    ```
 
-2. Open `backend/src/main/resources/application.properties` and update:
+2. Open `.env` file and add your API key:
+   ```
+   GROQ_API_KEY=your-actual-groq-api-key-here
+   ```
+
+3. **IMPORTANT**: Never commit `.env` to version control! It should already be in `.gitignore`.
    ```properties
    groq.api.key=your-groq-api-key-here
    ```
@@ -48,7 +53,7 @@ This guide will help you replace the Ollama integration with Groq API for faster
 3. **Start Frontend**:
    ```powershell
    cd frontend
-   npm start
+   pnpm start
    ```
 
 ### 4. Test the Integration

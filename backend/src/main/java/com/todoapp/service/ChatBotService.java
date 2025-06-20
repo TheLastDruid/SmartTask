@@ -86,13 +86,16 @@ public class ChatBotService {    @Autowired
             return new ChatResponse("Sorry, I couldn't add the tasks. Please try again.", 
                                   UUID.randomUUID().toString());
         }
-    }
-
-    private ChatResponse parseAndExecuteAction(String ollamaResponse, String userId, String conversationId) {
+    }    private ChatResponse parseAndExecuteAction(String ollamaResponse, String userId, String conversationId) {
         try {
             JsonNode responseJson = objectMapper.readTree(ollamaResponse);
-            String action = responseJson.get("action").asText();
-            String responseMessage = responseJson.get("response").asText();
+            
+            // Safely extract action and response with null checks
+            JsonNode actionNode = responseJson.get("action");
+            JsonNode responseNode = responseJson.get("response");
+            
+            String action = (actionNode != null && !actionNode.isNull()) ? actionNode.asText() : "GENERAL_HELP";
+            String responseMessage = (responseNode != null && !responseNode.isNull()) ? responseNode.asText("I'm here to help with your tasks!") : "I'm here to help with your tasks!";
 
             ChatResponse chatResponse = new ChatResponse(responseMessage, conversationId);
 
@@ -121,9 +124,21 @@ public class ChatBotService {    @Autowired
             System.out.println("DEBUG: handleCreateTask called with JSON: " + responseJson.toString());
             
             TaskRequest taskRequest = new TaskRequest();
-            String title = responseJson.get("taskTitle").asText();
-            String description = responseJson.get("taskDescription").asText("");
-            String priority = responseJson.get("priority").asText("MEDIUM");
+            
+            // Safely extract fields with null checks
+            JsonNode titleNode = responseJson.get("taskTitle");
+            JsonNode descriptionNode = responseJson.get("taskDescription");
+            JsonNode priorityNode = responseJson.get("priority");
+            
+            String title = (titleNode != null && !titleNode.isNull()) ? titleNode.asText() : "";
+            String description = (descriptionNode != null && !descriptionNode.isNull()) ? descriptionNode.asText("") : "";
+            String priority = (priorityNode != null && !priorityNode.isNull()) ? priorityNode.asText("MEDIUM") : "MEDIUM";
+            
+            // Validate that we have at least a title
+            if (title.trim().isEmpty()) {
+                System.out.println("DEBUG: No title provided, returning error message");
+                return new ChatResponse("I need more details to create a task. Please tell me what you'd like to accomplish.", conversationId);
+            }
             
             // Skip creation if we get template text instead of real values
             if (title.contains("extracted task title") || title.contains("if creating")) {

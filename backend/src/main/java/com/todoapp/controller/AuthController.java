@@ -19,7 +19,9 @@ import java.util.Map;
 public class AuthController {
 
     @Autowired
-    private AuthService authService;    @PostMapping("/login")
+    private AuthService authService;
+
+    @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         try {
             AuthResponse response = authService.authenticateUser(loginRequest);
@@ -38,7 +40,9 @@ public class AuthController {
             error.put("message", "Authentication failed. Please try again.");
             return ResponseEntity.badRequest().body(error);
         }
-    }@PostMapping("/register")
+    }
+
+    @PostMapping("/register")
     public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest signUpRequest) {
         try {
             AuthResponse response = authService.registerUser(signUpRequest);
@@ -48,7 +52,9 @@ public class AuthController {
             error.put("message", e.getMessage());
             return ResponseEntity.badRequest().body(error);
         }
-    }    @GetMapping("/verify")
+    }
+
+    @GetMapping("/verify")
     public ResponseEntity<?> verifyToken(HttpServletRequest request) {
         try {
             String jwt = parseJwt(request);
@@ -72,6 +78,51 @@ public class AuthController {
             Map<String, String> error = new HashMap<>();
             error.put("message", "Token validation failed");
             return ResponseEntity.status(401).body(error);
+        }
+    }
+
+    @GetMapping("/verify-email")
+    public ResponseEntity<?> verifyEmail(@RequestParam("token") String token) {
+        try {
+            boolean isVerified = authService.verifyEmail(token);
+            if (isVerified) {
+                Map<String, String> response = new HashMap<>();
+                response.put("message", "Email verified successfully");
+                return ResponseEntity.ok(response);
+            } else {
+                Map<String, String> error = new HashMap<>();
+                error.put("message", "Invalid or expired verification token");
+                return ResponseEntity.badRequest().body(error);
+            }
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("message", "Email verification failed: " + e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<?> resendVerificationEmail(@RequestBody Map<String, String> request) {
+        try {
+            String email = request.get("email");
+            if (email == null || email.trim().isEmpty()) {
+                Map<String, String> error = new HashMap<>();
+                error.put("message", "Email is required");
+                return ResponseEntity.badRequest().body(error);
+            }
+
+            authService.resendVerificationEmail(email);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Verification email sent successfully");
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("message", "Failed to resend verification email");
+            return ResponseEntity.badRequest().body(error);
         }
     }
 

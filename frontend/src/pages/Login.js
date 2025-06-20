@@ -66,8 +66,7 @@ const Login = () => {
     setIsLoading(true);
     setErrors({}); // Clear any previous errors
     
-    try {
-      await login(formData.email, formData.password);
+    try {      await login(formData.email, formData.password);
       toast.success('Welcome back!');
       navigate('/dashboard');
     } catch (error) {
@@ -77,6 +76,16 @@ const Login = () => {
       
       if (error.response?.data?.message) {
         message = error.response.data.message;
+        
+        // Check if it's an email verification error
+        if (message.includes('verify your email')) {
+          setErrors({ general: message });
+          // Redirect to email verification required page after a delay
+          setTimeout(() => {
+            navigate('/email-verification-required');
+          }, 3000);
+          return;
+        }
       } else if (error.response?.status === 401) {
         message = 'Invalid email or password';
       } else if (error.response?.status === 400) {

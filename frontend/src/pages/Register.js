@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
@@ -17,9 +17,32 @@ const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const { register, isAuthenticated, loading, logout } = useAuth();
+  const navigate = useNavigate();
+
+  // Clear any stale authentication on component mount
+  useEffect(() => {
+    console.log('Register component mounted, checking auth state');
+    
+    // If we have a token but no user, or if verification fails, clear auth state
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    
+    if (token && !user) {
+      console.log('Found token but no user data, clearing auth state');
+      logout();
+    }
+  }, [logout]);
+
+  // Redirect authenticated users to dashboard
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      console.log('User already authenticated, redirecting to dashboard');
+      toast.info('You are already logged in. Redirecting to dashboard...');
+      setTimeout(() => navigate('/dashboard', { replace: true }), 2000);
+    }
+  }, [isAuthenticated, loading, navigate]);
   
-  const { register, isAuthenticated, loading } = useAuth();
-  const navigate = useNavigate();  
   // Add extensive logging to debug the authentication state
   console.log('Register component - Auth state:', {
     isAuthenticated,
@@ -87,14 +110,19 @@ const Register = () => {
 
     setIsLoading(true);
     setErrors({}); // Clear previous errors
-    
-    try {
+      try {
       const { confirmPassword, ...registerData } = formData;
       console.log('Submitting registration data:', registerData); // Debug log
       
-      await register(registerData);
-      toast.success('Account created successfully!');
-      navigate('/dashboard');
+      const response = await register(registerData);
+      
+      if (response.emailVerificationRequired) {
+        toast.success('Account created successfully! Please check your email to verify your account.');
+        navigate('/email-verification-required');
+      } else {
+        toast.success('Account created successfully!');
+        navigate('/dashboard');
+      }
     } catch (error) {
       console.error('Registration error:', error); // Debug log
       console.error('Error response:', error.response); // Debug log
