@@ -30,17 +30,13 @@ public class ChatBotController {    @Autowired
     private FileProcessingService fileProcessingService;
 
     @Autowired
-    private UserRepository userRepository;@PostMapping("/message")
+    private UserRepository userRepository;    @PostMapping("/message")
     public ResponseEntity<ChatResponse> processMessage(@Valid @RequestBody ChatRequest request) {
         try {
             String userId = getCurrentUserId();
-            System.out.println("DEBUG: Processing message for user: " + userId + ", message: " + request.getMessage());
             ChatResponse response = chatBotService.processMessage(request, userId);
-            System.out.println("DEBUG: Response generated: " + response.getMessage());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            System.err.println("ERROR: Exception in processMessage: " + e.getMessage());
-            e.printStackTrace();
             ChatResponse errorResponse = new ChatResponse(
                 "Sorry, I encountered an error processing your request. Please try again.",
                 request.getConversationId()

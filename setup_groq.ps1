@@ -84,8 +84,8 @@ Write-Host "1. Restart your backend server" -ForegroundColor White
 Write-Host "2. Test the chat functionality in your application" -ForegroundColor White
 Write-Host ""
 Write-Host "Available Groq models:" -ForegroundColor Cyan
-Write-Host "- llama-3.1-70b-versatile (default)" -ForegroundColor White
-Write-Host "- llama-3.1-8b-instant" -ForegroundColor White
+Write-Host "- llama-3.1-8b-instant (default)" -ForegroundColor White
+Write-Host "- llama-3.1-70b-versatile" -ForegroundColor White
 Write-Host "- mixtral-8x7b-32768" -ForegroundColor White
 Write-Host ""
 Write-Host "For more models, visit: https://console.groq.com/docs/models" -ForegroundColor Gray
