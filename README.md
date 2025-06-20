@@ -9,7 +9,7 @@
 
 SmartTask is a secure, modern, and AI-powered full-stack task management application built with React.js, Spring Boot, MongoDB, and Ollama. The application provides comprehensive user authentication, advanced task management capabilities, intelligent chatbot assistance, and a beautiful responsive design using TailwindCSS and modern UI components.
 
-> **🎉 Latest Update (June 15, 2025)**: Authentication system fully debugged and working! Chat functionality with AI task creation is now operational.
+> **🎉 Latest Update (June 17, 2025)**: Complete setup with automatic database initialization! Test user automatically created on startup. All authentication and features fully working.
 
 ## ✨ Key Features
 
@@ -93,8 +93,9 @@ SmartTask is a secure, modern, and AI-powered full-stack task management applica
 
 ## 🚀 Current Status & Recent Updates
 
-### ✅ **Fully Working Features (June 15, 2025)**
+### ✅ **Fully Working Features (June 17, 2025)**
 - **✅ User Authentication**: Registration and login with JWT tokens
+- **✅ Automatic Database Setup**: Database cleared and test user created on startup
 - **✅ Security Configuration**: Proper endpoint protection and CORS setup  
 - **✅ Task Management**: Complete CRUD operations for tasks
 - **✅ AI Chat Integration**: Conversational task creation via Ollama
@@ -102,17 +103,23 @@ SmartTask is a secure, modern, and AI-powered full-stack task management applica
 - **✅ Docker Deployment**: Full containerized environment
 - **✅ File Processing**: PDF, DOCX, TXT file parsing for task extraction
 
-### 🔧 **Recent Bug Fixes**
-- **Fixed Authentication 403 Issues**: Corrected security configuration for auth endpoints
+### 🔧 **Recent Bug Fixes & Improvements**
+- **Fixed Authentication Endpoints**: Updated controller mapping from `/auth` to `/api/auth`
+- **Fixed Security Configuration**: Corrected SecurityConfig to permit proper endpoints
+- **Added Database Initialization**: Automatic database clearing and test user creation
+- **Fixed Frontend Routes**: Removed blocking ProtectedRoute for register/debug pages
 - **Fixed Request Validation**: Updated registration to require firstName/lastName fields
-- **Fixed JWT Filter Chain**: Proper token validation and user context setup
-- **Cleaned Up Project**: Removed unnecessary test scripts and build artifacts
 - **Updated Documentation**: Comprehensive API and setup documentation
+
+### 🎯 **Test User Credentials**
+For quick testing, a test user is automatically created on startup:
+- **Email**: `test@test.com`
+- **Password**: `investor`
 
 ### ⚡ **Quick Test Results**
 ```bash
-✅ Registration: POST /auth/register → 200 OK (JWT token returned)
-✅ Login: POST /auth/login → 200 OK (JWT token returned)  
+✅ Registration: POST /api/auth/register → 200 OK (JWT token returned)
+✅ Login: POST /api/auth/login → 200 OK (JWT token returned)  
 ✅ Chat: POST /api/chat/message → 200 OK (AI responses working)
 ✅ Health: GET /health → 200 OK (Service status confirmed)
 ```
@@ -123,7 +130,7 @@ SmartTask is a secure, modern, and AI-powered full-stack task management applica
 
 #### Register User
 ```http
-POST /auth/register
+POST /api/auth/register
 Content-Type: application/json
 
 {
@@ -147,7 +154,7 @@ Content-Type: application/json
 
 #### Login User
 ```http
-POST /auth/login
+POST /api/auth/login
 Content-Type: application/json
 
 {

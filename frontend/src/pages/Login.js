@@ -54,7 +54,6 @@ const Login = () => {
 
     return newErrors;
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -65,18 +64,33 @@ const Login = () => {
     }
 
     setIsLoading(true);
+    setErrors({}); // Clear any previous errors
+    
     try {
       await login(formData.email, formData.password);
       toast.success('Welcome back!');
       navigate('/dashboard');
     } catch (error) {
       console.error('Login error:', error);
-      const message = error.response?.data?.message || 'Login failed. Please try again.';
+      
+      let message = 'Login failed. Please try again.';
+      
+      if (error.response?.data?.message) {
+        message = error.response.data.message;
+      } else if (error.response?.status === 401) {
+        message = 'Invalid email or password';
+      } else if (error.response?.status === 400) {
+        message = 'Please check your email and password';
+      } else if (!error.response) {
+        message = 'Unable to connect to server. Please check your internet connection.';
+      }
+      
       toast.error(message);
       setErrors({ general: message });
     } finally {
       setIsLoading(false);
-    }  };
+    }
+  };
 
   // Show loading or redirect message if authenticated
   if (loading) {
@@ -216,18 +230,14 @@ const Login = () => {
                   <ArrowRight className="h-5 w-5 ml-2" />
                 </>
               )}
-            </button>            {/* Sign up link */}
-            <div className="text-center">
+            </button>
+
+            {/* Sign up link */}            <div className="text-center">
               <p className="text-sm text-gray-600">
-                Don't have an account?{' '}                <Link
+                Don't have an account?{' '}
+                <Link
                   to="/register"
                   className="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200"
-                  onClick={(e) => {
-                    console.log('Register link clicked!');
-                    console.log('Event:', e);
-                    console.log('Target:', e.target);
-                    console.log('Current location:', window.location.href);
-                  }}
                 >
                   Create one now
                 </Link>
@@ -238,10 +248,10 @@ const Login = () => {
 
         {/* Footer */}
         <div className="text-center text-xs text-gray-500 fade-in" style={{ animationDelay: '0.2s' }}>
-          <p>© 2025 SmartTask. Made with ❤️ for productivity.</p>
-        </div>
+          <p>© 2025 SmartTask. Made with ❤️ for productivity.</p>        </div>
       </div>
-    </div>  );
+    </div>
+  );
 };
 
 export default Login;

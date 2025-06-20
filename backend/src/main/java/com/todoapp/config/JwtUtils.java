@@ -57,10 +57,21 @@ public class JwtUtils {
     public Boolean isTokenExpired(String token) {
         final Date expiration = getExpirationDateFromToken(token);
         return expiration.before(new Date());
+    }    public Boolean validateJwtToken(String token, String email) {
+        try {
+            final String tokenEmail = getEmailFromJwtToken(token);
+            return (tokenEmail != null && tokenEmail.equals(email) && !isTokenExpired(token));
+        } catch (Exception e) {
+            return false;
+        }
     }
 
-    public Boolean validateJwtToken(String token, String email) {
-        final String tokenEmail = getEmailFromJwtToken(token);
-        return (tokenEmail.equals(email) && !isTokenExpired(token));
+    public Boolean validateJwtToken(String token) {
+        try {
+            getAllClaimsFromToken(token);
+            return !isTokenExpired(token);
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

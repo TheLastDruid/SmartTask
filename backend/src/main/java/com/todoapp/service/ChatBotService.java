@@ -14,10 +14,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 @Service
-public class ChatBotService {
-
-    @Autowired
-    private OllamaService ollamaService;
+public class ChatBotService {    @Autowired
+    private GroqService groqService;
 
     @Autowired
     private TaskService taskService;
@@ -25,11 +23,10 @@ public class ChatBotService {
     @Autowired
     private FileProcessingService fileProcessingService;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();    public ChatResponse processMessage(ChatRequest request, String userId) {
-        try {
+    private final ObjectMapper objectMapper = new ObjectMapper();    public ChatResponse processMessage(ChatRequest request, String userId) {        try {
             System.out.println("DEBUG: ChatBotService processing message: " + request.getMessage());
-            String response = ollamaService.processUserMessage(request.getMessage(), userId);
-            System.out.println("DEBUG: Ollama response: " + response);
+            String response = groqService.processUserMessage(request.getMessage(), userId);
+            System.out.println("DEBUG: Groq response: " + response);
             return parseAndExecuteAction(response, userId, request.getConversationId());
         } catch (Exception e) {
             System.err.println("ERROR: Exception in ChatBotService.processMessage: " + e.getMessage());
@@ -37,11 +34,9 @@ public class ChatBotService {
             return new ChatResponse("Sorry, I encountered an error processing your request. Please try again.", 
                                   request.getConversationId());
         }
-    }
-
-    public ChatResponse processFileUpload(String extractedText, String userId) {
+    }    public ChatResponse processFileUpload(String extractedText, String userId) {
         try {
-            List<TaskRequest> extractedTasks = ollamaService.extractTasksFromText(extractedText);
+            List<TaskRequest> extractedTasks = groqService.extractTasksFromText(extractedText);
             
             if (extractedTasks.isEmpty()) {
                 return new ChatResponse("I couldn't find any actionable tasks in the uploaded file.", 

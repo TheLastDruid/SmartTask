@@ -1,7 +1,9 @@
 package com.todoapp.controller;
 
 import com.todoapp.dto.*;
+import com.todoapp.repository.UserRepository;
 import com.todoapp.service.ChatBotService;
+import com.todoapp.service.GroqService;
 import com.todoapp.service.FileProcessingService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,13 +20,17 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/chat")
 @CrossOrigin(origins = "*", maxAge = 3600)
-public class ChatBotController {
-
-    @Autowired
+public class ChatBotController {    @Autowired
     private ChatBotService chatBotService;
 
     @Autowired
-    private FileProcessingService fileProcessingService;    @PostMapping("/message")
+    private GroqService groqService;
+
+    @Autowired
+    private FileProcessingService fileProcessingService;
+
+    @Autowired
+    private UserRepository userRepository;@PostMapping("/message")
     public ResponseEntity<ChatResponse> processMessage(@Valid @RequestBody ChatRequest request) {
         try {
             String userId = getCurrentUserId();
@@ -85,18 +91,29 @@ public class ChatBotController {
             );
             return ResponseEntity.ok(errorResponse);
         }
-    }
-
-    @GetMapping("/health")
+    }    @GetMapping("/health")
     public ResponseEntity<Map<String, String>> healthCheck() {
         Map<String, String> status = new HashMap<>();
-        status.put("status", "ChatBot service is running");
+        status.put("service", "ChatBot with Groq AI");
         status.put("timestamp", String.valueOf(System.currentTimeMillis()));
+        
+        // Check Groq service health
+        try {
+            boolean isGroqHealthy = groqService.isHealthy();
+            status.put("groq_status", isGroqHealthy ? "UP" : "DOWN");
+            status.put("status", isGroqHealthy ? "UP" : "DEGRADED");
+        } catch (Exception e) {
+            status.put("groq_status", "ERROR");
+            status.put("status", "DEGRADED");
+            status.put("error", e.getMessage());
+        }
+        
         return ResponseEntity.ok(status);
-    }
-
-    private String getCurrentUserId() {
+    }    private String getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return authentication.getName();
+        String email = authentication.getName();
+        return userRepository.findByEmail(email)
+            .orElseThrow(() -> new RuntimeException("User not found"))
+            .getId();
     }
 }

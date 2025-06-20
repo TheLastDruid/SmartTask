@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
+import { CheckSquare, User, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
 const Register = () => {
   console.log('Register component rendered!');
-  
-  const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
@@ -15,7 +15,11 @@ const Register = () => {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const { register, isAuthenticated, loading } = useAuth();  const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  const { register, isAuthenticated, loading } = useAuth();
+  const navigate = useNavigate();  
   // Add extensive logging to debug the authentication state
   console.log('Register component - Auth state:', {
     isAuthenticated,
@@ -23,17 +27,6 @@ const Register = () => {
     hasToken: !!localStorage.getItem('token'),
     currentPath: window.location.pathname
   });
-
-  // Temporarily disabled to debug register page access
-  /*
-  useEffect(() => {
-    if (!loading && isAuthenticated) {
-      console.log('User already authenticated, redirecting to dashboard');
-      toast.info('You are already logged in. Redirecting to dashboard...');
-      setTimeout(() => navigate('/dashboard', { replace: true }), 2000);
-    }
-  }, [isAuthenticated, loading, navigate]);
-  */
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -117,11 +110,12 @@ const Register = () => {
       }
       
       toast.error(message);
-      setErrors({ general: message });
-    } finally {
+      setErrors({ general: message });    } finally {
       setIsLoading(false);
-    }  };
-  // Show loading or redirect message if authenticated
+    }
+  };
+
+  // Show loading if authenticating
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -132,160 +126,238 @@ const Register = () => {
       </div>
     );
   }
-
-  // Temporarily disabled to debug register page access
-  /*
-  if (isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="bg-blue-50 border border-blue-200 text-blue-600 px-6 py-4 rounded-md">
-            <p className="font-medium">You are already logged in!</p>
-            <p className="text-sm mt-1">Redirecting to dashboard...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  */
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create your SmartTask account
+        {/* Header */}
+        <div className="text-center fade-in">
+          <div className="flex justify-center mb-6">
+            <div className="p-3 bg-blue-600 rounded-2xl shadow-lg">
+              <CheckSquare className="h-8 w-8 text-white" />
+            </div>
+          </div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+            Create your account
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link
-              to="/login"
-              className="font-medium text-blue-600 hover:text-blue-500"
-            >
-              sign in to existing account
-            </Link>
+          <p className="text-gray-600">
+            Join SmartTask and boost your productivity
           </p>
         </div>
-        
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {errors.general && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">
-              {errors.general}
-            </div>
-          )}
-          
-          <div className="space-y-4">
+
+        {/* Form */}
+        <div className="card p-8 scale-in" style={{ animationDelay: '0.1s' }}>
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            {errors.general && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+                {errors.general}
+              </div>
+            )}
+
+            {/* Name Fields */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-                  First Name
+                <label htmlFor="firstName" className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+                  <User className="h-4 w-4" />
+                  <span>First Name</span>
                 </label>
                 <input
                   id="firstName"
                   name="firstName"
                   type="text"
                   autoComplete="given-name"
+                  required
                   value={formData.firstName}
-                  onChange={handleChange}                  className={`mt-1 appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm ${
-                    errors.firstName ? 'border-red-500' : 'border-gray-300'
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  className={`input-field ${
+                    errors.firstName ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''
                   }`}
                   placeholder="First name"
                 />
-                {errors.firstName && <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>}
+                {errors.firstName && (
+                  <p className="mt-2 text-sm text-red-600 flex items-center space-x-1">
+                    <span className="w-1 h-1 bg-red-600 rounded-full"></span>
+                    <span>{errors.firstName}</span>
+                  </p>
+                )}
               </div>
-              
+
               <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-                  Last Name
+                <label htmlFor="lastName" className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+                  <User className="h-4 w-4" />
+                  <span>Last Name</span>
                 </label>
                 <input
                   id="lastName"
                   name="lastName"
                   type="text"
                   autoComplete="family-name"
+                  required
                   value={formData.lastName}
-                  onChange={handleChange}                  className={`mt-1 appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm ${
-                    errors.lastName ? 'border-red-500' : 'border-gray-300'
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  className={`input-field ${
+                    errors.lastName ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''
                   }`}
                   placeholder="Last name"
                 />
-                {errors.lastName && <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>}
+                {errors.lastName && (
+                  <p className="mt-2 text-sm text-red-600 flex items-center space-x-1">
+                    <span className="w-1 h-1 bg-red-600 rounded-full"></span>
+                    <span>{errors.lastName}</span>
+                  </p>
+                )}
               </div>
             </div>
-            
+
+            {/* Email Field */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
+              <label htmlFor="email" className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+                <Mail className="h-4 w-4" />
+                <span>Email address</span>
               </label>
               <input
                 id="email"
                 name="email"
                 type="email"
                 autoComplete="email"
+                required
                 value={formData.email}
-                onChange={handleChange}                className={`mt-1 appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm ${
-                  errors.email ? 'border-red-500' : 'border-gray-300'
+                onChange={handleChange}
+                disabled={isLoading}
+                className={`input-field ${
+                  errors.email ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''
                 }`}
                 placeholder="Enter your email"
               />
-              {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+              {errors.email && (
+                <p className="mt-2 text-sm text-red-600 flex items-center space-x-1">
+                  <span className="w-1 h-1 bg-red-600 rounded-full"></span>
+                  <span>{errors.email}</span>
+                </p>
+              )}
             </div>
-            
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                value={formData.password}
-                onChange={handleChange}                className={`mt-1 appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm ${
-                  errors.password ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="Enter your password"
-              />
-              {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
-            </div>
-            
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                Confirm Password
-              </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                value={formData.confirmPassword}
-                onChange={handleChange}                className={`mt-1 appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm ${
-                  errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="Confirm your password"
-              />
-              {errors.confirmPassword && <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>}
-            </div>
-          </div>
 
-          <div>
+            {/* Password Field */}
+            <div>
+              <label htmlFor="password" className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+                <Lock className="h-4 w-4" />
+                <span>Password</span>
+              </label>
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  value={formData.password}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  className={`input-field pr-12 ${
+                    errors.password ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''
+                  }`}
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="mt-2 text-sm text-red-600 flex items-center space-x-1">
+                  <span className="w-1 h-1 bg-red-600 rounded-full"></span>
+                  <span>{errors.password}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Confirm Password Field */}
+            <div>
+              <label htmlFor="confirmPassword" className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+                <Lock className="h-4 w-4" />
+                <span>Confirm Password</span>
+              </label>
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  className={`input-field pr-12 ${
+                    errors.confirmPassword ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''
+                  }`}
+                  placeholder="Confirm your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+              {errors.confirmPassword && (
+                <p className="mt-2 text-sm text-red-600 flex items-center space-x-1">
+                  <span className="w-1 h-1 bg-red-600 rounded-full"></span>
+                  <span>{errors.confirmPassword}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Submit Button */}
             <button
               type="submit"
-              disabled={isLoading}              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                isLoading ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+              disabled={isLoading}
+              className="btn btn-primary btn-lg w-full"
             >
               {isLoading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                <>
+                  <div className="spinner w-5 h-5 mr-2"></div>
                   Creating account...
-                </div>
+                </>
               ) : (
-                'Create account'
+                <>
+                  Create account
+                  <ArrowRight className="h-5 w-5 ml-2" />
+                </>
               )}
             </button>
-          </div>
-        </form>
+
+            {/* Sign in link */}
+            <div className="text-center">
+              <p className="text-sm text-gray-600">
+                Already have an account?{' '}
+                <Link
+                  to="/login"
+                  className="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200"
+                >
+                  Sign in now
+                </Link>
+              </p>
+            </div>
+          </form>
+        </div>
+
+        {/* Footer */}
+        <div className="text-center text-xs text-gray-500 fade-in" style={{ animationDelay: '0.2s' }}>
+          <p>© 2025 SmartTask. Made with ❤️ for productivity.</p>
+        </div>
       </div>
     </div>
   );

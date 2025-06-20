@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useMemo } from 'react';
+import PropTypes from 'prop-types';
 import { authService } from '../services/authService';
 
 const AuthContext = createContext();
@@ -52,8 +53,7 @@ export const AuthProvider = ({ children }) => {
       hasUser: !!state.user
     });
   }, [state]);
-  
-  useEffect(() => {
+    useEffect(() => {
     console.log('AuthProvider useEffect running');
     const token = localStorage.getItem('token');
     console.log('Token from localStorage:', token);
@@ -67,24 +67,40 @@ export const AuthProvider = ({ children }) => {
         try {
           console.log('Attempting to verify token...');
           // Make a simple request to verify token validity
-          await authService.verifyToken();
-          console.log('Token verification successful');
+          const response = await authService.verifyToken();
+          console.log('Token verification successful:', response.data);
+          
+          // Check if we have user data in localStorage
+          const userData = localStorage.getItem('user');
+          let user = {};
+          if (userData) {
+            try {
+              user = JSON.parse(userData);
+            } catch (e) {
+              console.warn('Failed to parse user data from localStorage');
+            }
+          }
+          
           dispatch({
             type: 'AUTH_SUCCESS',
             payload: {
               token,
-              user: JSON.parse(localStorage.getItem('user') || '{}'),
+              user,
             },
           });
         } catch (error) {
-          console.log('Token verification failed:', error);
-          // Token is invalid, clear it
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          authService.removeAuthToken();
-          dispatch({ type: 'AUTH_LOGOUT' });
+          console.log('Token verification failed:', error.response?.status, error.message);
+          // Only clear token if it's actually invalid (401), not for network errors
+          if (error.response?.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            authService.removeAuthToken();
+            dispatch({ type: 'AUTH_LOGOUT' });
+          } else {
+            // Network error - keep token but mark as not authenticated for now
+            dispatch({ type: 'SET_LOADING', payload: false });
+          }
         }
-        dispatch({ type: 'SET_LOADING', payload: false });
       };
       
       verifyToken();
@@ -142,15 +158,18 @@ export const AuthProvider = ({ children }) => {
     authService.removeAuthToken();
     dispatch({ type: 'AUTH_LOGOUT' });
   };
-
-  const value = {
+  const value = useMemo(() => ({
     ...state,
     login,
     register,
     logout,
-  };
+  }), [state, login, register, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+AuthProvider.propTypes = {
+  children: PropTypes.node.isRequired,
 };
 
 export const useAuth = () => {
@@ -160,3 +179,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+export { AuthContext };

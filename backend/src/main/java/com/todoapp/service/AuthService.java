@@ -60,4 +60,12 @@ public class AuthService {
 
         return new AuthResponse(jwt, user.getEmail(), user.getFirstName(), user.getLastName());
     }
+
+    public boolean validateToken(String token) {
+        try {
+            return jwtUtils.validateJwtToken(token);
+        } catch (Exception e) {
+            return false;
+        }
+    }
 }

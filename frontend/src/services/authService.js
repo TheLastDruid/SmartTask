@@ -30,14 +30,20 @@ api.interceptors.response.use(
     console.log('Error status:', error.response?.status);
     
     if (error.response?.status === 401) {
+      // Don't redirect if this is a login or register request
+      const isAuthRequest = error.config?.url?.includes('/api/auth/login') || 
+                           error.config?.url?.includes('/api/auth/register');
+      
       // Don't redirect if this is a token verification request
-      if (!error.config.url.includes('/auth/verify')) {
-        console.log('401 error not from /auth/verify, redirecting to login');
+      const isVerifyRequest = error.config?.url?.includes('/api/auth/verify');
+      
+      if (!isAuthRequest && !isVerifyRequest) {
+        console.log('401 error from protected route, redirecting to login');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         window.location.href = '/login';
       } else {
-        console.log('401 error from /auth/verify, not redirecting');
+        console.log('401 error from auth endpoint, not redirecting');
       }
     }
     return Promise.reject(error);
@@ -47,17 +53,17 @@ api.interceptors.response.use(
 export const authService = {
   login: (email, password) => {
     console.log('AuthService: Attempting login for:', email); // Debug log
-    return api.post('/auth/login', { email, password });
+    return api.post('/api/auth/login', { email, password });
   },
 
   register: (userData) => {
     console.log('AuthService: Attempting registration for:', userData.email); // Debug log
     console.log('AuthService: Registration data:', userData); // Debug log
-    return api.post('/auth/register', userData);
+    return api.post('/api/auth/register', userData);
   },
 
   verifyToken: () => {
-    return api.get('/auth/verify');
+    return api.get('/api/auth/verify');
   },
 
   setAuthToken: (token) => {

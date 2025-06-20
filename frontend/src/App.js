@@ -46,14 +46,10 @@ function App() {
                 <Navigate to="/dashboard" replace />
               </div>
             } />          </Routes>
-          
-          {/* Add ChatBot for authenticated users - only show on dashboard */}
-          {/* Temporarily commented out to fix routing issues */}
-          {/*
+            {/* Add ChatBot for authenticated users - only show on dashboard */}
           <ProtectedRoute>
             <ChatBot />
           </ProtectedRoute>
-          */}
           
           <ToastContainer
             position="top-right"

@@ -16,24 +16,38 @@ import java.util.stream.Collectors;
 public class TaskService {
 
     @Autowired
-    private TaskRepository taskRepository;
-
-    public List<TaskResponse> getAllTasksForUser(String userId) {
-        return taskRepository.findByUserId(userId)
-            .stream()
+    private TaskRepository taskRepository;    public List<TaskResponse> getAllTasksForUser(String userId) {
+        System.out.println("DEBUG: TaskService.getAllTasksForUser called for user: " + userId);
+        List<Task> tasks = taskRepository.findByUserId(userId);
+        System.out.println("DEBUG: Found " + tasks.size() + " tasks for user: " + userId);
+        
+        for (Task task : tasks) {
+            System.out.println("DEBUG: Task - ID: " + task.getId() + ", Title: " + task.getTitle() + ", UserId: " + task.getUserId());
+        }
+        
+        return tasks.stream()
             .map(TaskResponse::new)
             .collect(Collectors.toList());
-    }
-
-    public TaskResponse createTask(TaskRequest taskRequest, String userId) {
+    }public TaskResponse createTask(TaskRequest taskRequest, String userId) {
+        System.out.println("DEBUG: TaskService.createTask called for user: " + userId);
+        System.out.println("DEBUG: Task title: " + taskRequest.getTitle());
+        System.out.println("DEBUG: Task description: " + taskRequest.getDescription());
+        System.out.println("DEBUG: Task priority: " + taskRequest.getPriority());
+        
         Task task = new Task();
         task.setTitle(sanitizeInput(taskRequest.getTitle()));
         task.setDescription(sanitizeInput(taskRequest.getDescription()));
         task.setStatus(taskRequest.getStatus() != null ? taskRequest.getStatus() : TaskStatus.TODO);
         task.setDueDate(taskRequest.getDueDate());
+        task.setPriority(taskRequest.getPriority());
         task.setUserId(userId);
 
+        System.out.println("DEBUG: About to save task to MongoDB...");
         Task savedTask = taskRepository.save(task);
+        System.out.println("DEBUG: Task saved to MongoDB with ID: " + savedTask.getId());
+        System.out.println("DEBUG: Saved task title: " + savedTask.getTitle());
+        System.out.println("DEBUG: Saved task userId: " + savedTask.getUserId());
+        
         return new TaskResponse(savedTask);
     }
 
