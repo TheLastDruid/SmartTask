@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { Plus, Filter, Search, CheckCircle2, Clock, Circle, Loader2 } from 'lucide-react';
 import Navbar from '../components/Navbar';
@@ -11,32 +11,10 @@ const Dashboard = () => {
   const [filteredTasks, setFilteredTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState(null);
-  const [filter, setFilter] = useState('ALL');
+  const [editingTask, setEditingTask] = useState(null);  const [filter, setFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    fetchTasks();
-  }, []);
-
-  useEffect(() => {
-    filterTasks();
-  }, [tasks, filter, searchTerm]);
-
-  const fetchTasks = async () => {
-    try {
-      setLoading(true);
-      const response = await taskService.getAllTasks();
-      setTasks(response.data);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-      toast.error('Failed to fetch tasks');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filterTasks = () => {
+  const filterTasks = useCallback(() => {
     let filtered = [...tasks];
 
     // Apply status filter
@@ -53,6 +31,27 @@ const Dashboard = () => {
     }
 
     setFilteredTasks(filtered);
+  }, [tasks, filter, searchTerm]);
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  useEffect(() => {
+    filterTasks();
+  }, [tasks, filter, searchTerm, filterTasks]);
+
+  const fetchTasks = async () => {
+    try {
+      setLoading(true);
+      const response = await taskService.getAllTasks();
+      setTasks(response.data);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      toast.error('Failed to fetch tasks');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCreateTask = async (taskData) => {
