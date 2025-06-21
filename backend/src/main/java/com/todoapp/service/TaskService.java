@@ -16,12 +16,32 @@ import java.util.stream.Collectors;
 public class TaskService {
 
     @Autowired
-    private TaskRepository taskRepository;    public List<TaskResponse> getAllTasksForUser(String userId) {
+    private TaskRepository taskRepository;
+
+    @Autowired
+    private RedisPublisher redisPublisher;    public List<TaskResponse> getAllTasksForUser(String userId) {
+        // Try to get from cache first
+        Object cachedTasks = redisPublisher.getCachedUserTasks(userId);
+        if (cachedTasks != null) {
+            try {
+                @SuppressWarnings("unchecked")
+                List<TaskResponse> tasks = (List<TaskResponse>) cachedTasks;
+                return tasks;
+            } catch (Exception e) {
+                // If cache fails, fall back to database
+            }
+        }
+        
         List<Task> tasks = taskRepository.findByUserId(userId);
-        return tasks.stream()
+        List<TaskResponse> taskResponses = tasks.stream()
             .map(TaskResponse::new)
             .collect(Collectors.toList());
-    }public TaskResponse createTask(TaskRequest taskRequest, String userId) {
+            
+        // Cache the results
+        redisPublisher.cacheUserTasks(userId, taskResponses);
+        
+        return taskResponses;
+    }    public TaskResponse createTask(TaskRequest taskRequest, String userId) {
         Task task = new Task();
         task.setTitle(sanitizeInput(taskRequest.getTitle()));
         task.setDescription(sanitizeInput(taskRequest.getDescription()));
@@ -31,10 +51,14 @@ public class TaskService {
         task.setUserId(userId);
 
         Task savedTask = taskRepository.save(task);
-        return new TaskResponse(savedTask);
-    }
-
-    public TaskResponse updateTask(String taskId, TaskRequest taskRequest, String userId) {
+        TaskResponse taskResponse = new TaskResponse(savedTask);
+        
+        // Invalidate cache and publish update
+        redisPublisher.invalidateUserTasksCache(userId);
+        redisPublisher.publishTaskUpdate(userId, savedTask.getId(), "CREATE", taskResponse);
+        
+        return taskResponse;
+    }    public TaskResponse updateTask(String taskId, TaskRequest taskRequest, String userId) {
         Task task = taskRepository.findByIdAndUserId(taskId, userId)
             .orElseThrow(() -> new RuntimeException("Task not found"));
 
@@ -53,14 +77,22 @@ public class TaskService {
         task.setUpdatedAt(LocalDateTime.now());
 
         Task updatedTask = taskRepository.save(task);
-        return new TaskResponse(updatedTask);
-    }
-
-    public void deleteTask(String taskId, String userId) {
+        TaskResponse taskResponse = new TaskResponse(updatedTask);
+        
+        // Invalidate cache and publish update
+        redisPublisher.invalidateUserTasksCache(userId);
+        redisPublisher.publishTaskUpdate(userId, updatedTask.getId(), "UPDATE", taskResponse);
+        
+        return taskResponse;
+    }    public void deleteTask(String taskId, String userId) {
         Task task = taskRepository.findByIdAndUserId(taskId, userId)
             .orElseThrow(() -> new RuntimeException("Task not found"));
         
         taskRepository.delete(task);
+        
+        // Invalidate cache and publish update
+        redisPublisher.invalidateUserTasksCache(userId);
+        redisPublisher.publishTaskUpdate(userId, taskId, "DELETE", null);
     }
 
     public TaskResponse getTaskById(String taskId, String userId) {

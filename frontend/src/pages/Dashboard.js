@@ -1,19 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
-import { Plus, Filter, Search, CheckCircle2, Clock, Circle, Loader2 } from 'lucide-react';
+import { Plus, Filter, Search, CheckCircle2, Clock, Circle, Loader2, Wifi, WifiOff } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import TaskCard from '../components/TaskCard';
 import TaskModal from '../components/TaskModal';
 import ChatBot from '../components/ChatBot';
 import { taskService } from '../services/taskService';
+import { useRealTimeTasks } from '../hooks/useRealTimeTasks';
 
 const Dashboard = () => {
-  const [tasks, setTasks] = useState([]);
+  const [initialTasks, setInitialTasks] = useState([]);
   const [filteredTasks, setFilteredTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState(null);  const [filter, setFilter] = useState('ALL');
+  const [editingTask, setEditingTask] = useState(null);
+  const [filter, setFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Use real-time tasks hook
+  const { tasks, setTasks, isConnected, connectionError, refreshTasks } = useRealTimeTasks(initialTasks);
 
   const filterTasks = useCallback(() => {
     let filtered = [...tasks];
@@ -41,11 +46,11 @@ const Dashboard = () => {
   useEffect(() => {
     filterTasks();
   }, [tasks, filter, searchTerm, filterTasks]);
-
   const fetchTasks = async () => {
     try {
       setLoading(true);
       const response = await taskService.getAllTasks();
+      setInitialTasks(response.data);
       setTasks(response.data);
     } catch (error) {
       console.error('Error fetching tasks:', error);
@@ -156,9 +161,29 @@ const Dashboard = () => {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header Section */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4 fade-in">
-            My To-Do List
-          </h1>
+          <div className="flex items-center justify-center mb-4">
+            <h1 className="text-4xl font-bold text-gray-900 mr-4 fade-in">
+              My To-Do List
+            </h1>
+            {/* Real-time connection status */}
+            <div className={`flex items-center px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 ${
+              isConnected 
+                ? 'bg-green-100 text-green-800' 
+                : 'bg-red-100 text-red-800'
+            }`}>
+              {isConnected ? (
+                <>
+                  <Wifi className="h-4 w-4 mr-1" />
+                  Live Updates
+                </>
+              ) : (
+                <>
+                  <WifiOff className="h-4 w-4 mr-1" />
+                  Offline
+                </>
+              )}
+            </div>
+          </div>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto fade-in">
             Stay organized and productive with your personal task manager
           </p>

@@ -12,6 +12,18 @@ services:
     networks:
       - smart-task-network
 
+  redis:
+    image: redis:7.2-alpine
+    container_name: smart-task-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - smart-task-network
+    command: redis-server --appendonly yes
+
   backend:
     build:
       context: ./backend
@@ -24,9 +36,12 @@ services:
       - SPRING_DATA_MONGODB_HOST=mongodb
       - SPRING_DATA_MONGODB_PORT=27017
       - SPRING_DATA_MONGODB_DATABASE=todoapp
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
       - OLLAMA_BASE_URL=http://ollama:11434
     depends_on:
       - mongodb
+      - redis
     networks:
       - smart-task-network
 
@@ -44,6 +59,7 @@ services:
       - backend
     networks:
       - smart-task-network
+
   ollama:
     image: ollama/ollama:latest
     container_name: smart-task-ollama
@@ -59,6 +75,7 @@ services:
 
 volumes:
   mongodb_data:
+  redis_data:
   ollama_data:
 
 networks:
