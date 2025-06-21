@@ -4,6 +4,7 @@ import { Plus, Filter, Search, CheckCircle2, Clock, Circle, Loader2 } from 'luci
 import Navbar from '../components/Navbar';
 import TaskCard from '../components/TaskCard';
 import TaskModal from '../components/TaskModal';
+import ChatBot from '../components/ChatBot';
 import { taskService } from '../services/taskService';
 
 const Dashboard = () => {
@@ -304,9 +305,7 @@ const Dashboard = () => {
             ))}
           </div>
         )}
-      </div>
-
-      {/* Task Modal */}
+      </div>      {/* Task Modal */}
       <TaskModal
         isOpen={isModalOpen}
         onClose={closeModal}
@@ -314,6 +313,9 @@ const Dashboard = () => {
         task={editingTask}
         isEditing={!!editingTask}
       />
+
+      {/* ChatBot - Available for authenticated users on dashboard */}
+      <ChatBot />
     </div>
   );
 };
