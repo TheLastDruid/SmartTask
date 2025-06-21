@@ -5,7 +5,6 @@ import 'react-toastify/dist/ReactToastify.css';
 
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import ChatBot from './components/ChatBot';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -45,12 +44,9 @@ function App() {
                 {console.log('Root route accessed, redirecting to dashboard')}
                 <Navigate to="/dashboard" replace />
               </div>
-            } />
-          </Routes>
-            {/* Add ChatBot for authenticated users - only show on dashboard */}
-          <ProtectedRoute>
-            <ChatBot />
-          </ProtectedRoute>
+            } />          </Routes>
+          
+          {/* ChatBot is now handled within the dashboard component itself */}
           
           <ToastContainer
             position="top-right"

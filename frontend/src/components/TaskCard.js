@@ -6,8 +6,7 @@ import {
   Edit3, 
   Trash2, 
   Calendar,
-  MoreVertical,
-  CheckCircle
+  MoreVertical
 } from 'lucide-react';
 
 const TaskCard = ({ task, onEdit, onDelete, onStatusChange }) => {

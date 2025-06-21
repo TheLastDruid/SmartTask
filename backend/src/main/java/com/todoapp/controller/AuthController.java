@@ -64,11 +64,36 @@ public class AuthController {
                 return ResponseEntity.badRequest().body(error);
             }
 
-            // Use JwtUtils to validate token
-            if (authService.validateToken(jwt)) {
-                Map<String, String> response = new HashMap<>();
-                response.put("status", "valid");
-                return ResponseEntity.ok(response);
+            // Get user information from token
+            AuthResponse userInfo = authService.verifyTokenAndGetUser(jwt);
+            if (userInfo != null) {
+                return ResponseEntity.ok(userInfo);
+            } else {
+                Map<String, String> error = new HashMap<>();
+                error.put("message", "Invalid or expired token");
+                return ResponseEntity.status(401).body(error);
+            }
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("message", "Token validation failed");
+            return ResponseEntity.status(401).body(error);
+        }
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(HttpServletRequest request) {
+        try {
+            String jwt = parseJwt(request);
+            if (jwt == null) {
+                Map<String, String> error = new HashMap<>();
+                error.put("message", "No token provided");
+                return ResponseEntity.status(401).body(error);
+            }
+
+            // Get user information from token
+            AuthResponse userInfo = authService.verifyTokenAndGetUser(jwt);
+            if (userInfo != null) {
+                return ResponseEntity.ok(userInfo);
             } else {
                 Map<String, String> error = new HashMap<>();
                 error.put("message", "Invalid or expired token");
@@ -82,7 +107,7 @@ public class AuthController {
     }
 
     @GetMapping("/verify-email")
-    public ResponseEntity<?> verifyEmail(@RequestParam("token") String token) {
+    public ResponseEntity<?> verifyEmail(@RequestParam String token) {
         try {
             boolean isVerified = authService.verifyEmail(token);
             if (isVerified) {
@@ -96,7 +121,7 @@ public class AuthController {
             }
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
-            error.put("message", "Email verification failed: " + e.getMessage());
+            error.put("message", "Email verification failed");
             return ResponseEntity.badRequest().body(error);
         }
     }
@@ -111,14 +136,16 @@ public class AuthController {
                 return ResponseEntity.badRequest().body(error);
             }
 
-            authService.resendVerificationEmail(email);
-            Map<String, String> response = new HashMap<>();
-            response.put("message", "Verification email sent successfully");
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("message", e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            boolean sent = authService.resendVerificationEmail(email);
+            if (sent) {
+                Map<String, String> response = new HashMap<>();
+                response.put("message", "Verification email sent successfully");
+                return ResponseEntity.ok(response);
+            } else {
+                Map<String, String> error = new HashMap<>();
+                error.put("message", "Failed to send verification email. Please check if the email is registered.");
+                return ResponseEntity.badRequest().body(error);
+            }
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
             error.put("message", "Failed to resend verification email");

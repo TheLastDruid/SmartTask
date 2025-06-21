@@ -1,47 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/authService';
 import { toast } from 'react-toastify';
 import { CheckSquare, User, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
 const Register = () => {
   console.log('Register component rendered!');
-    const [formData, setFormData] = useState({
+  
+  const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
-  });
-  const [errors, setErrors] = useState({});
+  });  const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const { register, isAuthenticated, loading, logout } = useAuth();
-  const navigate = useNavigate();
 
-  // Clear any stale authentication on component mount
+  const { login, isAuthenticated, loading } = useAuth();
+  const navigate = useNavigate();
+  
+  // Debug effect to monitor state changes
+  useEffect(() => {
+    const info = `Auth state - loading: ${loading}, isAuthenticated: ${isAuthenticated}, hasToken: ${!!localStorage.getItem('token')}`;
+    console.log('Register component - ' + info);
+  }, [loading, isAuthenticated]);
+    // Redirect authenticated users to dashboard
   useEffect(() => {
     console.log('Register component mounted, checking auth state');
     
-    // If we have a token but no user, or if verification fails, clear auth state
-    const token = localStorage.getItem('token');
-    const user = localStorage.getItem('user');
-    
-    if (token && !user) {
-      console.log('Found token but no user data, clearing auth state');
-      logout();
-    }
-  }, [logout]);
-
-  // Redirect authenticated users to dashboard
-  useEffect(() => {
     if (!loading && isAuthenticated) {
-      console.log('User already authenticated, redirecting to dashboard');
-      toast.info('You are already logged in. Redirecting to dashboard...');
-      setTimeout(() => navigate('/dashboard', { replace: true }), 2000);
+      console.log('User is authenticated, redirecting to dashboard');
+      navigate('/dashboard', { replace: true });
     }
   }, [isAuthenticated, loading, navigate]);
+
+  // Don't redirect if user is on register page - they want to register
+  // This prevents the immediate redirect issue
   
   // Add extensive logging to debug the authentication state
   console.log('Register component - Auth state:', {
@@ -106,26 +103,29 @@ const Register = () => {
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
-    }
-
-    setIsLoading(true);
-    setErrors({}); // Clear previous errors
-      try {
+    }    setIsLoading(true);
+    setErrors({});    try {
       const { confirmPassword, ...registerData } = formData;
-      console.log('Submitting registration data:', registerData); // Debug log
+      console.log('Submitting registration data:', registerData);
       
-      const response = await register(registerData);
+      const response = await authService.register(registerData);
+      console.log('Registration response:', response);
       
-      if (response.emailVerificationRequired) {
-        toast.success('Account created successfully! Please check your email to verify your account.');
-        navigate('/email-verification-required');
-      } else {
-        toast.success('Account created successfully!');
-        navigate('/dashboard');
-      }
+      // Extract user data and token from response.data
+      const responseData = response.data;
+      const userData = {
+        email: responseData.email,
+        firstName: responseData.firstName,
+        lastName: responseData.lastName
+      };
+      
+      // Login the user immediately after successful registration
+      login(userData, responseData.token);
+      
+      toast.success('Account created successfully! Welcome to SmartTask!');
+      navigate('/dashboard');
     } catch (error) {
-      console.error('Registration error:', error); // Debug log
-      console.error('Error response:', error.response); // Debug log
+      console.error('Registration error:', error);
       
       let message = 'Registration failed. Please try again.';
       
@@ -138,7 +138,8 @@ const Register = () => {
       }
       
       toast.error(message);
-      setErrors({ general: message });    } finally {
+      setErrors({ general: message });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -153,8 +154,7 @@ const Register = () => {
         </div>
       </div>
     );
-  }
-  return (
+  }  return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         {/* Header */}

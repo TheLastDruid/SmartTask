@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { CheckSquare, CheckCircle, XCircle, Loader, Mail } from 'lucide-react';
@@ -8,22 +8,11 @@ const EmailVerification = () => {
   const [searchParams] = useSearchParams();
   const [verificationStatus, setVerificationStatus] = useState('verifying'); // 'verifying', 'success', 'error'
   const [message, setMessage] = useState('');
-  const [resendEmail, setResendEmail] = useState('');
-  const [isResending, setIsResending] = useState(false);
+  const [resendEmail, setResendEmail] = useState('');  const [isResending, setIsResending] = useState(false);
 
   const token = searchParams.get('token');
 
-  useEffect(() => {
-    if (!token) {
-      setVerificationStatus('error');
-      setMessage('Invalid verification link. No token provided.');
-      return;
-    }
-
-    verifyEmail();
-  }, [token]);
-
-  const verifyEmail = async () => {
+  const verifyEmail = useCallback(async () => {
     try {
       await authService.verifyEmail(token);
       setVerificationStatus('success');
@@ -35,7 +24,17 @@ const EmailVerification = () => {
       setMessage(errorMessage);
       toast.error(errorMessage);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) {
+      setVerificationStatus('error');
+      setMessage('Invalid verification link. No token provided.');
+      return;
+    }
+
+    verifyEmail();
+  }, [token, verifyEmail]);
 
   const handleResendVerification = async (e) => {
     e.preventDefault();

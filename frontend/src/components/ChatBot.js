@@ -64,13 +64,11 @@ const ChatBot = () => {
     setIsLoading(true);
 
     // Add user message
-    addMessage('user', userMessage);
-
-    try {
+    addMessage('user', userMessage);    try {
       const response = await chatService.sendMessage(userMessage, conversationId);
       
       // Add bot response
-      const botMessage = addMessage('bot', response.message);
+      addMessage('bot', response.message);
 
       // Handle special actions
       if (response.suggestedTasks && response.suggestedTasks.length > 0) {

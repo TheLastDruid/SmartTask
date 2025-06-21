@@ -34,8 +34,9 @@ api.interceptors.response.use(
       const isAuthRequest = error.config?.url?.includes('/api/auth/login') || 
                            error.config?.url?.includes('/api/auth/register');
       
-      // Don't redirect if this is a token verification request
-      const isVerifyRequest = error.config?.url?.includes('/api/auth/verify');
+      // Don't redirect if this is a token verification request (like getCurrentUser)
+      const isVerifyRequest = error.config?.url?.includes('/api/auth/verify') ||
+                              error.config?.url?.includes('/api/auth/me');
       
       if (!isAuthRequest && !isVerifyRequest) {
         console.log('401 error from protected route, redirecting to login');
@@ -85,6 +86,23 @@ export const authService = {
   removeAuthToken: () => {
     delete api.defaults.headers.common['Authorization'];
   },
+};
+
+export const getCurrentUser = async () => {
+  try {
+    const response = await api.get('/api/auth/me');
+    return response.data;
+  } catch (error) {
+    console.error('Error getting current user:', error);
+    throw error;
+  }
+};
+
+export const logout = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  // Clear the auth token from axios defaults
+  delete api.defaults.headers.common['Authorization'];
 };
 
 export default api;

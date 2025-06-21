@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/authService';
 import { toast } from 'react-toastify';
 import { CheckSquare, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
@@ -12,17 +13,17 @@ const Login = () => {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  const { login, isAuthenticated, loading } = useAuth();
+  const { login, isAuthenticated, loading, clearAuth } = useAuth();
   const navigate = useNavigate();
-  // Redirect authenticated users to dashboard
+  // Clear any stale authentication on component mount for login page
   useEffect(() => {
-    if (!loading && isAuthenticated) {
-      console.log('User already authenticated, redirecting to dashboard');
-      toast.info('You are already logged in. Redirecting to dashboard...');
-      setTimeout(() => navigate('/dashboard', { replace: true }), 2000);
+    if (window.location.pathname === '/login') {
+      console.log('User on login page, clearing any stale auth');
+      clearAuth();
     }
-  }, [isAuthenticated, loading, navigate]);
+  }, [clearAuth]);
+
+  // Don't auto-redirect from login page - user wants to login
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -61,12 +62,23 @@ const Login = () => {
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
-    }
-
-    setIsLoading(true);
-    setErrors({}); // Clear any previous errors
-    
-    try {      await login(formData.email, formData.password);
+    }    setIsLoading(true);
+    setErrors({});
+      try {
+      // Call the API login function
+      const response = await authService.login(formData.email, formData.password);      console.log('Login response:', response);
+      
+      // Extract user data and token from response.data
+      const responseData = response.data;
+      const userData = {
+        email: responseData.email,
+        firstName: responseData.firstName,
+        lastName: responseData.lastName
+      };
+      
+      // Update the auth context with user data and token
+      login(userData, responseData.token);
+      
       toast.success('Welcome back!');
       navigate('/dashboard');
     } catch (error) {
@@ -76,16 +88,6 @@ const Login = () => {
       
       if (error.response?.data?.message) {
         message = error.response.data.message;
-        
-        // Check if it's an email verification error
-        if (message.includes('verify your email')) {
-          setErrors({ general: message });
-          // Redirect to email verification required page after a delay
-          setTimeout(() => {
-            navigate('/email-verification-required');
-          }, 3000);
-          return;
-        }
       } else if (error.response?.status === 401) {
         message = 'Invalid email or password';
       } else if (error.response?.status === 400) {
