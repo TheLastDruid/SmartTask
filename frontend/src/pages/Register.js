@@ -110,10 +110,10 @@ const Register = () => {
       
       const response = await authService.register(registerData);
       console.log('Registration response:', response);
-      
-      // Extract user data and token from response.data
+        // Extract user data and token from response.data
       const responseData = response.data;
       const userData = {
+        id: responseData.id,
         email: responseData.email,
         firstName: responseData.firstName,
         lastName: responseData.lastName

@@ -6,36 +6,54 @@ import { toast } from 'react-toastify';
 export const useRealTimeTasks = (initialTasks = []) => {
   const [tasks, setTasks] = useState(initialTasks);
   const [isConnected, setIsConnected] = useState(false);
-  const [connectionError, setConnectionError] = useState(null);
+  const [connectionError] = useState(null);
   const { user } = useAuth();
 
+  // Check WebSocket connection status periodically
+  useEffect(() => {
+    const checkConnection = () => {
+      const connected = webSocketService.isConnected();
+      setIsConnected(connected);
+    };
+
+    // Check immediately
+    checkConnection();
+
+    // Check every 2 seconds
+    const interval = setInterval(checkConnection, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
   // Handle real-time task updates
   const handleTaskUpdate = useCallback((message) => {
+    console.log('🔔 Frontend received task update:', message);
     const { action, data, taskId } = message;
     
     setTasks(prevTasks => {
-      switch (action) {
-        case 'CREATE':
+      switch (action) {        case 'CREATE': {
           // Add new task if it doesn't exist
           if (!prevTasks.find(task => task.id === data.id)) {
             toast.success('New task created!', { position: 'bottom-right' });
             return [...prevTasks, data];
           }
           return prevTasks;
+        }
           
-        case 'UPDATE':
+        case 'UPDATE': {
           // Update existing task
           const updatedTasks = prevTasks.map(task => 
             task.id === data.id ? { ...task, ...data } : task
           );
           toast.info('Task updated!', { position: 'bottom-right' });
           return updatedTasks;
+        }
           
-        case 'DELETE':
+        case 'DELETE': {
           // Remove deleted task
           const filteredTasks = prevTasks.filter(task => task.id !== taskId);
           toast.warning('Task deleted!', { position: 'bottom-right' });
           return filteredTasks;
+        }
           
         default:
           return prevTasks;
@@ -71,40 +89,25 @@ export const useRealTimeTasks = (initialTasks = []) => {
       });
     }
   }, []);
-
-  // Connect to WebSocket when user is available
+  // Register message handlers when user is available
   useEffect(() => {
-    if (user && user.id) {
-      const onConnected = () => {
-        setIsConnected(true);
-        setConnectionError(null);
-        console.log('Connected to real-time updates');
-      };
+    if (user?.id) {
+      console.log('Registering real-time message handlers for user:', user.id);
 
-      const onError = (error) => {
-        setIsConnected(false);
-        setConnectionError(error);
-        console.error('WebSocket connection error:', error);
-      };
-
-      // Connect to WebSocket
-      webSocketService.connect(user.id, onConnected, onError);
-
-      // Register message handlers
+      // Register message handlers (connection is already handled by WebSocketDebugger)
       const removeTaskHandler = webSocketService.onMessage('tasks', handleTaskUpdate);
       const removeNotificationHandler = webSocketService.onMessage('notifications', handleNotification);
       const removeSystemNotificationHandler = webSocketService.onMessage('system-notifications', handleSystemNotification);
 
       // Cleanup on unmount or user change
       return () => {
+        console.log('Cleaning up real-time message handlers');
         removeTaskHandler();
         removeNotificationHandler();
         removeSystemNotificationHandler();
-        webSocketService.disconnect();
-        setIsConnected(false);
       };
     }
-  }, [user, handleTaskUpdate, handleNotification, handleSystemNotification]);
+  }, [user?.id, handleTaskUpdate, handleNotification, handleSystemNotification]);
 
   // Update tasks when initialTasks change
   useEffect(() => {

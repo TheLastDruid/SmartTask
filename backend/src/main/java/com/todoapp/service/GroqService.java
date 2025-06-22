@@ -8,14 +8,13 @@ import com.todoapp.dto.TaskRequest;
 import okhttp3.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import jakarta.annotation.PostConstruct;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -36,9 +35,7 @@ public class GroqService {
             .readTimeout(60, TimeUnit.SECONDS)
             .build();
     
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    public String processUserMessage(String message, String userId) throws IOException {
+    private final ObjectMapper objectMapper = new ObjectMapper();    public String processUserMessage(String message, String userId) throws IOException {
         System.out.println("DEBUG: GroqService processing message: " + message);
         String prompt = createTaskManagementPrompt(message);
         System.out.println("DEBUG: Generated prompt: " + prompt);
@@ -46,11 +43,65 @@ public class GroqService {
             String result = callGroq(prompt);
             System.out.println("DEBUG: Groq raw response: " + result);
             return result;
-        } catch (Exception e) {
+        } catch (IOException e) {
             System.err.println("ERROR: Exception in GroqService.processUserMessage: " + e.getMessage());
+            
+            // If it's an authentication error, provide a helpful fallback response
+            if (e.getMessage().contains("Authentication Failed") || e.getMessage().contains("Invalid API Key")) {
+                return createFallbackResponse(message);
+            }
+            
             e.printStackTrace();
             throw e;
         }
+    }
+    
+    private String createFallbackResponse(String userMessage) {
+        System.out.println("DEBUG: Using fallback response for: " + userMessage);
+        
+        // Simple keyword-based response when API is unavailable
+        String lowerMessage = userMessage.toLowerCase();
+        
+        if (lowerMessage.contains("create") || lowerMessage.contains("add") || lowerMessage.contains("task")) {
+            return "{\n" +
+                   "  \"action\": \"CREATE_TASK\",\n" +
+                   "  \"taskTitle\": \"" + extractTaskTitle(userMessage) + "\",\n" +
+                   "  \"taskDescription\": \"Task created from: " + userMessage + "\",\n" +
+                   "  \"dueDate\": null,\n" +
+                   "  \"priority\": \"MEDIUM\",\n" +
+                   "  \"searchQuery\": null,\n" +
+                   "  \"response\": \"I'll help you create that task. Note: AI assistant is temporarily unavailable, using basic task creation.\"\n" +
+                   "}";
+        } else if (lowerMessage.contains("list") || lowerMessage.contains("show") || lowerMessage.contains("tasks")) {
+            return "{\n" +
+                   "  \"action\": \"LIST_TASKS\",\n" +
+                   "  \"taskTitle\": null,\n" +
+                   "  \"taskDescription\": null,\n" +
+                   "  \"dueDate\": null,\n" +
+                   "  \"priority\": \"MEDIUM\",\n" +
+                   "  \"searchQuery\": null,\n" +
+                   "  \"response\": \"Here are your tasks. Note: AI assistant is temporarily unavailable.\"\n" +
+                   "}";
+        } else {
+            return "{\n" +
+                   "  \"action\": \"GENERAL_HELP\",\n" +
+                   "  \"taskTitle\": null,\n" +
+                   "  \"taskDescription\": null,\n" +
+                   "  \"dueDate\": null,\n" +
+                   "  \"priority\": \"MEDIUM\",\n" +
+                   "  \"searchQuery\": null,\n" +
+                   "  \"response\": \"I'm here to help! AI assistant is temporarily unavailable. Please check the GROQ_API_KEY configuration. You can still create tasks, view your task list, and manage your todos.\"\n" +
+                   "}";
+        }
+    }
+    
+    private String extractTaskTitle(String message) {
+        // Simple extraction - remove common words
+        String title = message.replaceAll("(?i)(create|add|task|a|the|to|please)", "").trim();
+        if (title.isEmpty()) {
+            title = "New Task";
+        }
+        return title.length() > 50 ? title.substring(0, 50) + "..." : title;
     }
 
     public List<TaskRequest> extractTasksFromText(String text) throws IOException {
@@ -121,12 +172,17 @@ public class GroqService {
             If no actionable tasks are found, return:
             {"tasks": []}
             """.formatted(text);
-    }
-
-    private String callGroq(String prompt) throws IOException {
+    }    private String callGroq(String prompt) throws IOException {
         if (groqApiKey == null || groqApiKey.trim().isEmpty()) {
             throw new RuntimeException("Groq API key is not configured. Please set groq.api.key in application.properties");
         }
+
+        // Debug: Print API key details (first 10 chars only for security)
+        System.out.println("DEBUG: API Key being used: " + 
+            (groqApiKey.length() >= 10 ? groqApiKey.substring(0, 10) + "..." : groqApiKey));
+        System.out.println("DEBUG: API Key length: " + groqApiKey.length());
+        System.out.println("DEBUG: API Key starts with 'gsk_': " + groqApiKey.startsWith("gsk_"));
+        System.out.println("DEBUG: API Key contains whitespace: " + !groqApiKey.equals(groqApiKey.trim()));
 
         // Create the request body in OpenAI-compatible format
         ObjectNode requestBody = objectMapper.createObjectNode();
@@ -153,12 +209,19 @@ public class GroqService {
                 .post(body)
                 .addHeader("Authorization", "Bearer " + groqApiKey)
                 .addHeader("Content-Type", "application/json")
-                .build();
-
-        try (Response response = client.newCall(request).execute()) {
+                .build();        try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful()) {
                 String errorBody = response.body() != null ? response.body().string() : "No error details";
                 System.err.println("Groq API error response: " + errorBody);
+                
+                // Handle specific error cases
+                if (response.code() == 401) {
+                    System.err.println("API Key Authentication Failed!");
+                    System.err.println("Please check your GROQ_API_KEY in the .env file");
+                    System.err.println("Visit https://console.groq.com/keys to get a valid API key");
+                    throw new IOException("Groq API Authentication Failed: Invalid API Key. Please check your GROQ_API_KEY configuration.");
+                }
+                
                 throw new IOException("Groq API call failed: " + response.code() + " - " + errorBody);
             }
 
@@ -258,6 +321,22 @@ public class GroqService {
         } catch (Exception e) {
             System.err.println("Groq health check failed: " + e.getMessage());
             return false;
+        }
+    }
+
+    @PostConstruct
+    public void validateConfiguration() {
+        System.out.println("DEBUG: GroqService initializing...");
+        System.out.println("DEBUG: API Key present: " + (groqApiKey != null && !groqApiKey.trim().isEmpty()));
+        System.out.println("DEBUG: API Key starts with 'gsk_': " + (groqApiKey != null && groqApiKey.startsWith("gsk_")));
+        System.out.println("DEBUG: API Key length: " + (groqApiKey != null ? groqApiKey.length() : 0));
+        System.out.println("DEBUG: API URL: " + groqApiUrl);
+        System.out.println("DEBUG: Model: " + groqModel);
+        
+        if (groqApiKey == null || groqApiKey.trim().isEmpty() || groqApiKey.equals("your-groq-api-key-here")) {
+            System.err.println("WARNING: Groq API key is not properly configured!");
+            System.err.println("Current API key value: '" + groqApiKey + "'");
+            System.err.println("Please check your .env file and ensure GROQ_API_KEY is set correctly.");
         }
     }
 }

@@ -49,21 +49,65 @@ export const chatService = {
       throw error;
     }
   },
-
   // Upload a file for processing
-  uploadFile: async (file) => {
+  uploadFile: async (file, conversationId = null) => {
     try {
       const formData = new FormData();
       formData.append('file', file);
+      if (conversationId) {
+        formData.append('conversationId', conversationId);
+      }
 
       const response = await api.post('/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
-      return response.data;
+      return response.data.response || response.data;  // Handle wrapped response
     } catch (error) {
       console.error('Error uploading file:', error);
+      throw error;
+    }
+  },  // Get main conversation for current user
+  getMainConversation: async () => {
+    try {
+      const response = await api.get('/conversation/main');
+      return response.data;
+    } catch (error) {
+      console.error('Error getting main conversation:', error);
+      throw error;
+    }
+  },
+
+  // Get specific conversation
+  getConversation: async (conversationId) => {
+    try {
+      const response = await api.get(`/conversation/${conversationId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting conversation:', error);
+      throw error;
+    }
+  },
+
+  // Get all conversations for current user
+  getUserConversations: async () => {
+    try {
+      const response = await api.get('/conversations');
+      return response.data;
+    } catch (error) {
+      console.error('Error getting user conversations:', error);
+      throw error;
+    }
+  },
+
+  // Delete a conversation
+  deleteConversation: async (conversationId) => {
+    try {
+      const response = await api.delete(`/conversation/${conversationId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
       throw error;
     }
   },

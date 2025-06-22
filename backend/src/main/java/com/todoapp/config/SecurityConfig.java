@@ -55,9 +55,17 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))            .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/api/auth/register").permitAll()
                 .requestMatchers("/api/auth/login").permitAll()
+                .requestMatchers("/api/test-connection").permitAll()  // Test endpoint
+                .requestMatchers("/api/test-publish-message").permitAll()  // Test Redis publish endpoint
+                .requestMatchers("/api/test-broadcast-message").permitAll()  // Test broadcast endpoint
                 .requestMatchers("/health").permitAll()
+                .requestMatchers("/health/**").permitAll()
                 .requestMatchers("/api/health").permitAll()
                 .requestMatchers("/api/chat/health").permitAll()
+                .requestMatchers("/ws/**").permitAll()  // Allow WebSocket connections
+                .requestMatchers("/app/**").permitAll()  // Allow WebSocket app endpoints
+                .requestMatchers("/topic/**").permitAll()  // Allow WebSocket topic subscriptions
+                .requestMatchers("/queue/**").permitAll()  // Allow WebSocket queue subscriptions
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())

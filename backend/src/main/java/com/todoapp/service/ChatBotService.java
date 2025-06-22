@@ -23,11 +23,27 @@ public class ChatBotService {    @Autowired
     @Autowired
     private FileProcessingService fileProcessingService;
 
+    @Autowired
+    private ChatConversationService chatConversationService;
+
     private final ObjectMapper objectMapper = new ObjectMapper();    public ChatResponse processMessage(ChatRequest request, String userId) {        try {
             System.out.println("DEBUG: ChatBotService processing message: " + request.getMessage());
+            
+            // Save user message to conversation
+            String conversationId = request.getConversationId();
+            if (conversationId == null || conversationId.trim().isEmpty()) {
+                conversationId = "main_" + userId;
+            }
+            chatConversationService.saveMessage(userId, conversationId, "user", request.getMessage());
+            
             String response = groqService.processUserMessage(request.getMessage(), userId);
             System.out.println("DEBUG: Groq response: " + response);
-            return parseAndExecuteAction(response, userId, request.getConversationId());
+            
+            ChatResponse chatResponse = parseAndExecuteAction(response, userId, conversationId);
+              // Save assistant response to conversation
+            chatConversationService.saveMessage(userId, conversationId, "assistant", chatResponse.getMessage());
+            
+            return chatResponse;
         } catch (Exception e) {
             System.err.println("ERROR: Exception in ChatBotService.processMessage: " + e.getMessage());
             e.printStackTrace();
@@ -36,37 +52,49 @@ public class ChatBotService {    @Autowired
         }
     }    public ChatResponse processFileUpload(String extractedText, String userId) {
         try {
+            // Generate a conversation ID for this session
+            String conversationId = "main_" + userId;
+            
+            // Save file upload message
+            chatConversationService.saveFileMessage(userId, conversationId, 
+                "File uploaded with content: " + extractedText.substring(0, Math.min(100, extractedText.length())) + "...", 
+                "uploaded_file");
+            
             List<TaskRequest> extractedTasks = groqService.extractTasksFromText(extractedText);
             
+            String responseMessage;
+            ChatResponse chatResponse;
+            
             if (extractedTasks.isEmpty()) {
-                return new ChatResponse("I couldn't find any actionable tasks in the uploaded file.", 
-                                      UUID.randomUUID().toString());
+                responseMessage = "I couldn't find any actionable tasks in the uploaded file.";
+                chatResponse = new ChatResponse(responseMessage, conversationId);
+            } else {
+                List<TaskResponse> suggestedTasks = new ArrayList<>();
+                for (TaskRequest taskRequest : extractedTasks) {
+                    TaskResponse taskResponse = new TaskResponse();
+                    taskResponse.setTitle(taskRequest.getTitle());
+                    taskResponse.setDescription(taskRequest.getDescription());
+                    taskResponse.setPriority(taskRequest.getPriority());
+                    taskResponse.setDueDate(taskRequest.getDueDate());
+                    taskResponse.setStatus(TaskStatus.PENDING);
+                    suggestedTasks.add(taskResponse);
+                }
+
+                responseMessage = String.format("I found %d potential tasks in your file. Would you like me to add them to your task list?", 
+                                               extractedTasks.size());
+                chatResponse = new ChatResponse(responseMessage, conversationId);
+                chatResponse.setSuggestedTasks(suggestedTasks);
+                chatResponse.setRequiresConfirmation(true);
+                chatResponse.setAction("ADD_EXTRACTED_TASKS");
             }
-
-            List<TaskResponse> suggestedTasks = new ArrayList<>();
-            for (TaskRequest taskRequest : extractedTasks) {
-                TaskResponse taskResponse = new TaskResponse();
-                taskResponse.setTitle(taskRequest.getTitle());
-                taskResponse.setDescription(taskRequest.getDescription());
-                taskResponse.setPriority(taskRequest.getPriority());
-                taskResponse.setDueDate(taskRequest.getDueDate());
-                taskResponse.setStatus(TaskStatus.PENDING);
-                suggestedTasks.add(taskResponse);
-            }
-
-            ChatResponse chatResponse = new ChatResponse(
-                String.format("I found %d potential tasks in your file. Would you like me to add them to your task list?", 
-                             extractedTasks.size()),
-                UUID.randomUUID().toString()
-            );
-            chatResponse.setSuggestedTasks(suggestedTasks);
-            chatResponse.setRequiresConfirmation(true);
-            chatResponse.setAction("ADD_EXTRACTED_TASKS");
-
+            
+            // Save assistant response
+            chatConversationService.saveMessage(userId, conversationId, "assistant", responseMessage);
+            
             return chatResponse;
         } catch (Exception e) {
             return new ChatResponse("Sorry, I encountered an error processing the uploaded file.", 
-                                  UUID.randomUUID().toString());
+                                  "main_" + userId);
         }
     }
 

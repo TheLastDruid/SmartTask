@@ -26,6 +26,9 @@ public class TaskController {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired 
+    private com.todoapp.service.RedisPublisher redisPublisher;
+
     @GetMapping
     public ResponseEntity<List<TaskResponse>> getAllTasks() {
         try {
@@ -87,6 +90,34 @@ public class TaskController {
         } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    // Test endpoint to verify Redis/WebSocket integration
+    @PostMapping("/test-redis")
+    public ResponseEntity<Map<String, String>> testRedisIntegration() {
+        try {
+            String userId = getCurrentUserId();
+            
+            // Create a test message
+            Map<String, Object> testData = new HashMap<>();
+            testData.put("message", "Test Redis integration");
+            testData.put("timestamp", java.time.LocalDateTime.now());
+            
+            // Publish test message
+            redisPublisher.publishTaskUpdate(userId, "test-task-id", "TEST", testData);
+            
+            Map<String, String> response = new HashMap<>();
+            response.put("status", "success");
+            response.put("message", "Test message published to Redis");
+            response.put("userId", userId);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("status", "error");
+            error.put("message", "Failed to publish test message: " + e.getMessage());
             return ResponseEntity.badRequest().body(error);
         }
     }

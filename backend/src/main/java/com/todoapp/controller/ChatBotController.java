@@ -1,8 +1,10 @@
 package com.todoapp.controller;
 
 import com.todoapp.dto.*;
+import com.todoapp.model.ChatConversation;
 import com.todoapp.repository.UserRepository;
 import com.todoapp.service.ChatBotService;
+import com.todoapp.service.ChatConversationService;
 import com.todoapp.service.GroqService;
 import com.todoapp.service.FileProcessingService;
 import jakarta.validation.Valid;
@@ -24,13 +26,16 @@ public class ChatBotController {    @Autowired
     private ChatBotService chatBotService;
 
     @Autowired
+    private ChatConversationService chatConversationService;
+
+    @Autowired
     private GroqService groqService;
 
     @Autowired
     private FileProcessingService fileProcessingService;
 
     @Autowired
-    private UserRepository userRepository;    @PostMapping("/message")
+    private UserRepository userRepository;@PostMapping("/message")
     public ResponseEntity<ChatResponse> processMessage(@Valid @RequestBody ChatRequest request) {
         try {
             String userId = getCurrentUserId();
@@ -43,24 +48,18 @@ public class ChatBotController {    @Autowired
             );
             return ResponseEntity.ok(errorResponse);
         }
-    }
-
-    @PostMapping("/upload")
-    public ResponseEntity<?> uploadFile(@RequestParam("file") MultipartFile file) {
+    }    @PostMapping("/upload")
+    public ResponseEntity<ChatResponse> uploadFile(@RequestParam("file") MultipartFile file) {
         try {
             String userId = getCurrentUserId();
             
             if (file.isEmpty()) {
-                Map<String, String> error = new HashMap<>();
-                error.put("message", "Please select a file to upload");
-                return ResponseEntity.badRequest().body(error);
+                return ResponseEntity.badRequest().body(new ChatResponse("Please select a file to upload", null));
             }
 
             String fileName = file.getOriginalFilename();
             if (!fileProcessingService.isSupportedFileType(fileName)) {
-                Map<String, String> error = new HashMap<>();
-                error.put("message", "Unsupported file type. Please upload .txt, .pdf, or .docx files.");
-                return ResponseEntity.badRequest().body(error);
+                return ResponseEntity.badRequest().body(new ChatResponse("Unsupported file type. Please upload .txt, .pdf, or .docx files.", null));
             }
 
             String extractedText = fileProcessingService.extractTextFromFile(file);
@@ -68,9 +67,7 @@ public class ChatBotController {    @Autowired
             
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("message", "Failed to process the uploaded file: " + e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            return ResponseEntity.badRequest().body(new ChatResponse("Failed to process the uploaded file: " + e.getMessage(), null));
         }
     }
 
@@ -87,7 +84,44 @@ public class ChatBotController {    @Autowired
             );
             return ResponseEntity.ok(errorResponse);
         }
-    }    @GetMapping("/health")
+    }
+
+    @GetMapping("/conversation/{conversationId}")
+    public ResponseEntity<ChatConversation> getConversation(@PathVariable String conversationId) {
+        try {
+            String userId = getCurrentUserId();
+            return chatConversationService.getConversation(conversationId)
+                    .filter(conv -> conv.getUserId().equals(userId))
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @GetMapping("/conversations")
+    public ResponseEntity<List<ChatConversation>> getUserConversations() {
+        try {
+            String userId = getCurrentUserId();
+            List<ChatConversation> conversations = chatConversationService.getUserConversations(userId);
+            return ResponseEntity.ok(conversations);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @GetMapping("/conversation/main")
+    public ResponseEntity<ChatConversation> getMainConversation() {
+        try {
+            String userId = getCurrentUserId();
+            ChatConversation conversation = chatConversationService.getMainConversation(userId);
+            return ResponseEntity.ok(conversation);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @GetMapping("/health")
     public ResponseEntity<Map<String, String>> healthCheck() {
         Map<String, String> status = new HashMap<>();
         status.put("service", "ChatBot with Groq AI");
@@ -101,11 +135,12 @@ public class ChatBotController {    @Autowired
         } catch (Exception e) {
             status.put("groq_status", "ERROR");
             status.put("status", "DEGRADED");
-            status.put("error", e.getMessage());
-        }
+            status.put("error", e.getMessage());        }
         
         return ResponseEntity.ok(status);
-    }    private String getCurrentUserId() {
+    }
+
+    private String getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();
         return userRepository.findByEmail(email)

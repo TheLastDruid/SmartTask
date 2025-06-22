@@ -10,12 +10,22 @@ class WebSocketService {
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
     this.reconnectDelay = 1000; // Start with 1 second
-  }
-
-  connect(userId, onConnected, onError) {
+  }  connect(userId, onConnected, onError) {
     if (this.connected) {
       return;
     }
+
+    // Get the JWT token from localStorage
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.error('No JWT token found, cannot establish WebSocket connection');
+      if (onError) {
+        onError(new Error('No JWT token found'));
+      }
+      return;
+    }
+
+    console.log('🔌 Attempting WebSocket connection with token for user:', userId);
 
     const socket = new SockJS(`${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/ws`);
     this.stompClient = Stomp.over(socket);
@@ -25,10 +35,17 @@ class WebSocketService {
       this.stompClient.debug = () => {};
     }
 
-    this.stompClient.connect(
-      {},
+    // Pass the JWT token in the connection headers
+    const headers = {
+      'Authorization': `Bearer ${token}`,
+      'X-User-ID': userId
+    };
+
+    console.log('🔐 Connecting with headers:', { 'Authorization': 'Bearer ***', 'X-User-ID': userId });    this.stompClient.connect(
+      headers,
       (frame) => {
-        console.log('Connected to WebSocket:', frame);
+        console.log('✅ Connected to WebSocket:', frame);
+        console.log('🔍 DEBUG: Connection established successfully');
         this.connected = true;
         this.reconnectAttempts = 0;
         this.reconnectDelay = 1000;
@@ -41,7 +58,7 @@ class WebSocketService {
         }
       },
       (error) => {
-        console.error('WebSocket connection error:', error);
+        console.error('❌ WebSocket connection error:', error);
         this.connected = false;
         
         if (onError) {
@@ -69,14 +86,17 @@ class WebSocketService {
       console.error('Max reconnection attempts reached');
     }
   }
-
   subscribeToUserChannels(userId) {
     if (!this.stompClient || !this.connected) {
+      console.log('🚫 Cannot subscribe: stompClient or connected is false', { stompClient: !!this.stompClient, connected: this.connected });
       return;
     }
 
+    console.log('📡 Subscribing to user channels for:', userId);
+
     // Subscribe to user-specific task updates
     this.subscribe(`/user/${userId}/queue/tasks`, (message) => {
+      console.log('📨 Received task update message:', message.body);
       this.handleMessage('tasks', JSON.parse(message.body));
     });
 
@@ -98,22 +118,25 @@ class WebSocketService {
     // Subscribe to system-wide notifications
     this.subscribe('/topic/notifications', (message) => {
       this.handleMessage('system-notifications', JSON.parse(message.body));
-    });
-
-    // Subscribe to general task updates (for dashboard)
+    });    // Subscribe to general task updates (for dashboard)
     this.subscribe('/topic/tasks', (message) => {
-      this.handleMessage('task-updates', JSON.parse(message.body));
+      console.log('📨 Received message from /topic/tasks:', message.body);
+      const parsedMessage = JSON.parse(message.body);
+      console.log('🔍 Parsed message:', parsedMessage);
+      console.log('🔍 Message type from payload:', parsedMessage.type);
+      this.handleMessage('tasks', parsedMessage);
     });
   }
-
   subscribe(destination, callback) {
     if (!this.stompClient || !this.connected) {
       console.warn('Cannot subscribe: WebSocket not connected');
       return;
     }
 
+    console.log('🔔 Subscribing to:', destination);
     const subscription = this.stompClient.subscribe(destination, callback);
     this.subscriptions.set(destination, subscription);
+    console.log('✅ Successfully subscribed to:', destination);
     return subscription;
   }
 
@@ -123,18 +146,27 @@ class WebSocketService {
       subscription.unsubscribe();
       this.subscriptions.delete(destination);
     }
-  }
-
-  handleMessage(type, message) {
-    const handlers = this.messageHandlers.get(type);
+  }  handleMessage(type, message) {
+    console.log(`📧 Handling message of type '${type}':`, message);
+    console.log('🔍 DEBUG: Message object structure:', Object.keys(message));
+    console.log('🔍 DEBUG: Message.type field:', message.type);
+    
+    // Check if we're accidentally using message.type instead of the parameter
+    const actualType = type;
+    console.log('🔍 DEBUG: Using actualType:', actualType);
+    
+    const handlers = this.messageHandlers.get(actualType);
     if (handlers) {
+      console.log(`🎯 Found ${handlers.length} handlers for message type '${actualType}'`);
       handlers.forEach(handler => {
         try {
           handler(message);
         } catch (error) {
-          console.error(`Error handling message of type ${type}:`, error);
+          console.error(`Error handling message of type ${actualType}:`, error);
         }
       });
+    } else {
+      console.warn(`⚠️ No handlers found for message type '${actualType}'`);
     }
   }
 

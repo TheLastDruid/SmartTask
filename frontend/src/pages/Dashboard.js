@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar';
 import TaskCard from '../components/TaskCard';
 import TaskModal from '../components/TaskModal';
 import ChatBot from '../components/ChatBot';
+import WebSocketDebugger from '../components/WebSocketDebugger';
 import { taskService } from '../services/taskService';
 import { useRealTimeTasks } from '../hooks/useRealTimeTasks';
 
@@ -337,10 +338,11 @@ const Dashboard = () => {
         onSubmit={editingTask ? handleEditTask : handleCreateTask}
         task={editingTask}
         isEditing={!!editingTask}
-      />
-
-      {/* ChatBot - Available for authenticated users on dashboard */}
+      />      {/* ChatBot - Available for authenticated users on dashboard */}
       <ChatBot />
+      
+      {/* WebSocket Debugger - Temporary for debugging */}
+      <WebSocketDebugger />
     </div>
   );
 };

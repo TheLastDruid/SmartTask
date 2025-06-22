@@ -41,18 +41,33 @@ public class RedisConfig {
         }
         
         return new JedisConnectionFactory(redisStandaloneConfiguration);
-    }
-
-    @Bean
+    }    @Bean
     public RedisTemplate<String, Object> redisTemplate() {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(jedisConnectionFactory());
-          // Use Jackson2JsonRedisSerializer to serialize and deserialize the redis value
+        
+        // Use StringRedisSerializer for both keys and values for pub/sub messages
+        // This prevents double serialization issues with manual JSON conversion
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setHashKeySerializer(new StringRedisSerializer());
+        template.setValueSerializer(new StringRedisSerializer());
+        template.setHashValueSerializer(new StringRedisSerializer());
+        
+        // For caching objects, we'll create a separate template
+        template.afterPropertiesSet();
+        return template;
+    }
+
+    @Bean
+    public RedisTemplate<String, Object> redisTemplateForCaching() {
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
+        template.setConnectionFactory(jedisConnectionFactory());
+        
+        // Use Jackson2JsonRedisSerializer for caching operations
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         Jackson2JsonRedisSerializer<Object> jackson2JsonRedisSerializer = new Jackson2JsonRedisSerializer<>(objectMapper, Object.class);
         
-        // Use StringRedisSerializer to serialize and deserialize the redis key
         template.setKeySerializer(new StringRedisSerializer());
         template.setHashKeySerializer(new StringRedisSerializer());
         template.setValueSerializer(jackson2JsonRedisSerializer);

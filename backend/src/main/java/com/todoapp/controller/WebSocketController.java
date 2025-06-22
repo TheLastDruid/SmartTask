@@ -34,13 +34,14 @@ public class WebSocketController implements MessageListener {
         redisMessageListenerContainer.addMessageListener(this, new ChannelTopic("task_updates"));
         redisMessageListenerContainer.addMessageListener(this, new ChannelTopic("user_updates"));
         redisMessageListenerContainer.addMessageListener(this, new ChannelTopic("system_notifications"));
-    }
-
-    @Override
+    }    @Override
     public void onMessage(Message message, byte[] pattern) {
         try {
             String channel = new String(pattern);
             String messageBody = new String(message.getBody());
+            
+            System.out.println("🔔 WebSocket received Redis message on channel: " + channel);
+            System.out.println("📨 Message body: " + messageBody);
             
             // Parse the Redis message
             Map<String, Object> messageData = objectMapper.readValue(messageBody, Map.class);
@@ -73,21 +74,31 @@ public class WebSocketController implements MessageListener {
                 }
                 break;
         }
-    }
-
-    private void handleTaskUpdate(Map<String, Object> messageData) {
+    }    private void handleTaskUpdate(Map<String, Object> messageData) {
         String userId = (String) messageData.get("userId");
-        String action = (String) messageData.get("action");
+        
+        System.out.println("📤 Sending task update to user: " + userId);
+        System.out.println("📋 Task data: " + messageData);
         
         // Send to specific user
-        messagingTemplate.convertAndSendToUser(
-            userId, 
-            "/queue/tasks", 
-            messageData
-        );
+        try {
+            messagingTemplate.convertAndSendToUser(
+                userId, 
+                "/queue/tasks", 
+                messageData
+            );
+            System.out.println("✅ Successfully sent to user " + userId + " at /user/" + userId + "/queue/tasks");
+        } catch (Exception e) {
+            System.err.println("❌ Error sending to user " + userId + ": " + e.getMessage());
+        }
         
         // Also broadcast to general task topic for dashboard updates
-        messagingTemplate.convertAndSend("/topic/tasks", messageData);
+        try {
+            messagingTemplate.convertAndSend("/topic/tasks", messageData);
+            System.out.println("✅ Successfully broadcast to /topic/tasks");
+        } catch (Exception e) {
+            System.err.println("❌ Error broadcasting to /topic/tasks: " + e.getMessage());
+        }
     }
 
     private void handleUserUpdate(Map<String, Object> messageData) {

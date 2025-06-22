@@ -3,12 +3,14 @@ package com.todoapp.dto;
 public class AuthResponse {
     private String token;
     private String type = "Bearer";
+    private String id;
     private String email;
     private String firstName;
     private String lastName;
 
-    public AuthResponse(String token, String email, String firstName, String lastName) {
+    public AuthResponse(String token, String id, String email, String firstName, String lastName) {
         this.token = token;
+        this.id = id;
         this.email = email;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -29,6 +31,14 @@ public class AuthResponse {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getEmail() {

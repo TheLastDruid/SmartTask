@@ -45,7 +45,7 @@ class AuthControllerTest {
         loginRequest.setEmail("test@example.com");
         loginRequest.setPassword("password123");
 
-        AuthResponse authResponse = new AuthResponse("jwt-token", "test@example.com", "John", "Doe");
+        AuthResponse authResponse = new AuthResponse("jwt-token", "user123", "test@example.com", "John", "Doe");
 
         when(authService.authenticateUser(any(LoginRequest.class))).thenReturn(authResponse);
 
@@ -91,7 +91,7 @@ class AuthControllerTest {
         registerRequest.setFirstName("Jane");
         registerRequest.setLastName("Smith");
 
-        AuthResponse authResponse = new AuthResponse("jwt-token", "newuser@example.com", "Jane", "Smith");
+        AuthResponse authResponse = new AuthResponse("jwt-token", "user456", "newuser@example.com", "Jane", "Smith");
 
         when(authService.registerUser(any(RegisterRequest.class))).thenReturn(authResponse);
 

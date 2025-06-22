@@ -30,7 +30,7 @@ public class AuthService {
 
     @Autowired
     private EmailService emailService;
-public AuthResponse authenticateUser(LoginRequest loginRequest) {
+    public AuthResponse authenticateUser(LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
             new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
 
@@ -41,7 +41,7 @@ public AuthResponse authenticateUser(LoginRequest loginRequest) {
 
         String jwt = jwtUtils.generateJwtToken(loginRequest.getEmail());
 
-        return new AuthResponse(jwt, user.getEmail(), user.getFirstName(), user.getLastName());
+        return new AuthResponse(jwt, user.getId(), user.getEmail(), user.getFirstName(), user.getLastName());
     }    public AuthResponse registerUser(RegisterRequest signUpRequest) {
         if (userRepository.existsByEmail(signUpRequest.getEmail())) {
             throw new RuntimeException("Error: Email is already taken!");
@@ -60,16 +60,14 @@ public AuthResponse authenticateUser(LoginRequest loginRequest) {
 
         // Generate JWT token immediately since no email verification is needed
         String jwt = jwtUtils.generateJwtToken(user.getEmail());
-        return new AuthResponse(jwt, user.getEmail(), user.getFirstName(), user.getLastName());
-    }    public boolean validateToken(String token) {
+        return new AuthResponse(jwt, user.getId(), user.getEmail(), user.getFirstName(), user.getLastName());
+    }public boolean validateToken(String token) {
         try {
             return jwtUtils.validateJwtToken(token);
         } catch (Exception e) {
             return false;
         }
-    }
-
-    public AuthResponse verifyTokenAndGetUser(String token) {
+    }    public AuthResponse verifyTokenAndGetUser(String token) {
         if (!validateToken(token)) {
             return null;
         }
@@ -82,7 +80,7 @@ public AuthResponse authenticateUser(LoginRequest loginRequest) {
             return null;
         }
         
-        return new AuthResponse(token, user.getEmail(), user.getFirstName(), user.getLastName());
+        return new AuthResponse(token, user.getId(), user.getEmail(), user.getFirstName(), user.getLastName());
     }
 
     public boolean verifyEmail(String token) {

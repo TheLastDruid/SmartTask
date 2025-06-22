@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,6 +16,9 @@ public class RedisPublisher {
     private RedisTemplate<String, Object> redisTemplate;
 
     @Autowired
+    private RedisTemplate<String, Object> redisTemplateForCaching;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     private static final String TASK_CHANNEL = "task_updates";
@@ -24,12 +26,11 @@ public class RedisPublisher {
 
     public void publishTaskUpdate(String userId, String taskId, String action, Object taskData) {
         try {
-            Map<String, Object> message = new HashMap<>();
-            message.put("userId", userId);
+            Map<String, Object> message = new HashMap<>();            message.put("userId", userId);
             message.put("taskId", taskId);
             message.put("action", action); // CREATE, UPDATE, DELETE
             message.put("data", taskData);
-            message.put("timestamp", LocalDateTime.now());
+            message.put("timestamp", System.currentTimeMillis()); // Use timestamp in milliseconds
             message.put("type", "TASK_UPDATE");
 
             String jsonMessage = objectMapper.writeValueAsString(message);
@@ -47,11 +48,10 @@ public class RedisPublisher {
 
     public void publishUserUpdate(String userId, String action, Object userData) {
         try {
-            Map<String, Object> message = new HashMap<>();
-            message.put("userId", userId);
+            Map<String, Object> message = new HashMap<>();            message.put("userId", userId);
             message.put("action", action); // LOGIN, LOGOUT, PROFILE_UPDATE, etc.
             message.put("data", userData);
-            message.put("timestamp", LocalDateTime.now());
+            message.put("timestamp", System.currentTimeMillis()); // Use timestamp in milliseconds
             message.put("type", "USER_UPDATE");
 
             String jsonMessage = objectMapper.writeValueAsString(message);
@@ -67,10 +67,9 @@ public class RedisPublisher {
 
     public void publishSystemNotification(String message, String type) {
         try {
-            Map<String, Object> notification = new HashMap<>();
-            notification.put("message", message);
+            Map<String, Object> notification = new HashMap<>();            notification.put("message", message);
             notification.put("type", type); // INFO, WARNING, ERROR
-            notification.put("timestamp", LocalDateTime.now());
+            notification.put("timestamp", System.currentTimeMillis()); // Use timestamp in milliseconds
             notification.put("broadcast", true);
 
             String jsonMessage = objectMapper.writeValueAsString(notification);
@@ -85,23 +84,21 @@ public class RedisPublisher {
 
     private String getUserChannel(String userId) {
         return "user_" + userId;
-    }
-
-    // Cache operations for frequently accessed data
+    }    // Cache operations for frequently accessed data
     public void cacheUserTasks(String userId, Object tasks) {
         String key = "user_tasks:" + userId;
-        redisTemplate.opsForValue().set(key, tasks);
+        redisTemplateForCaching.opsForValue().set(key, tasks);
         // Set expiration to 1 hour
-        redisTemplate.expire(key, java.time.Duration.ofHours(1));
+        redisTemplateForCaching.expire(key, java.time.Duration.ofHours(1));
     }
 
     public Object getCachedUserTasks(String userId) {
         String key = "user_tasks:" + userId;
-        return redisTemplate.opsForValue().get(key);
+        return redisTemplateForCaching.opsForValue().get(key);
     }
 
     public void invalidateUserTasksCache(String userId) {
         String key = "user_tasks:" + userId;
-        redisTemplate.delete(key);
+        redisTemplateForCaching.delete(key);
     }
 }

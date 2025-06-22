@@ -67,10 +67,10 @@ const Login = () => {
       try {
       // Call the API login function
       const response = await authService.login(formData.email, formData.password);      console.log('Login response:', response);
-      
-      // Extract user data and token from response.data
+        // Extract user data and token from response.data
       const responseData = response.data;
       const userData = {
+        id: responseData.id,
         email: responseData.email,
         firstName: responseData.firstName,
         lastName: responseData.lastName
@@ -255,9 +255,7 @@ const Login = () => {
               </p>
             </div>
           </form>
-        </div>
-
-        {/* Footer */}
+        </div>        {/* Footer */}
         <div className="text-center text-xs text-gray-500 fade-in" style={{ animationDelay: '0.2s' }}>
           <p>© 2025 SmartTask. Made with ❤️ for productivity.</p>        </div>
       </div>
