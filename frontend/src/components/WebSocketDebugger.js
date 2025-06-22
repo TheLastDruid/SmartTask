@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import webSocketService from '../services/webSocketService';
 import { useAuth } from '../context/AuthContext';
 
-const WebSocketDebugger = () => {
+const WebSocketDebugger = ({ isVisible, onClose }) => {
   const [connectionStatus, setConnectionStatus] = useState('Disconnected');
   const [messages, setMessages] = useState([]);
   const [lastMessage, setLastMessage] = useState(null);
@@ -93,8 +93,13 @@ const WebSocketDebugger = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     webSocketService.disconnect();
-    window.location.reload();
-  };
+    window.location.reload();  };
+  
+  // Don't render if not visible
+  if (!isVisible) {
+    return null;
+  }
+
   return (
     <div style={{ 
       position: 'fixed', 
@@ -109,26 +114,43 @@ const WebSocketDebugger = () => {
       zIndex: 999,
       boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
       transition: 'all 0.3s ease'
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMinimized ? '0' : '10px' }}>
+    }}>      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMinimized ? '0' : '10px' }}>
         <h4 style={{ margin: '0', color: '#333', fontSize: isMinimized ? '11px' : '12px' }}>
           {isMinimized ? 'WS Debug' : 'WebSocket Debug Panel'}
         </h4>
-        <button 
-          onClick={() => setIsMinimized(!isMinimized)}
-          style={{
-            background: 'none',
-            border: 'none',
-            fontSize: '14px',
-            cursor: 'pointer',
-            padding: '2px 5px',
-            borderRadius: '3px',
-            hover: { background: '#f0f0f0' }
-          }}
-          title={isMinimized ? 'Expand' : 'Minimize'}
-        >
-          {isMinimized ? '▲' : '▼'}
-        </button>
+        <div style={{ display: 'flex', gap: '5px' }}>
+          <button 
+            onClick={() => setIsMinimized(!isMinimized)}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '14px',
+              cursor: 'pointer',
+              padding: '2px 5px',
+              borderRadius: '3px',
+              hover: { background: '#f0f0f0' }
+            }}
+            title={isMinimized ? 'Expand' : 'Minimize'}
+          >
+            {isMinimized ? '▲' : '▼'}
+          </button>
+          <button 
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '14px',
+              cursor: 'pointer',
+              padding: '2px 5px',
+              borderRadius: '3px',
+              color: '#666',
+              hover: { background: '#f0f0f0' }
+            }}
+            title="Close"
+          >
+            ✕
+          </button>
+        </div>
       </div>
       
       {!isMinimized && (

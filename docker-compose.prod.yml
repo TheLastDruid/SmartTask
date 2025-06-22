@@ -20,17 +20,35 @@ services:
       retries: 3
       start_period: 30s
 
+  redis:
+    image: redis:7.2-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - smarttask-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    command: redis-server --appendonly yes
+
   backend:
     image: ${BACKEND_IMAGE:-smarttask-backend:latest}
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-production}
       SPRING_DATA_MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-password123}@mongodb:27017/${MONGO_DATABASE:-smarttask}?authSource=admin
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production}
-      OLLAMA_API_URL: ${OLLAMA_API_URL:-http://ollama:11434}
       SERVER_PORT: 8080
     depends_on:
       mongodb:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - smarttask-network
@@ -77,28 +95,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-  ollama:
-    image: ollama/ollama:latest
-    restart: unless-stopped
-    volumes:
-      - ollama_data:/root/.ollama
-    environment:
-      OLLAMA_HOST: 0.0.0.0
-    ports:
-      - "11434:11434"
-    networks:
-      - smarttask-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
 volumes:
   mongodb_data:
     driver: local
-  ollama_data:
+  redis_data:
     driver: local
 
 networks:

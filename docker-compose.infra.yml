@@ -12,22 +12,21 @@ services:
     networks:
       - smart-task-network
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: smart-task-ollama
+  redis:
+    image: redis:7.2-alpine
+    container_name: smart-task-redis
     restart: unless-stopped
     ports:
-      - "11434:11434"
+      - "6379:6379"
     volumes:
-      - ollama_data:/root/.ollama
+      - redis_data:/data
     networks:
       - smart-task-network
-    environment:
-      - OLLAMA_ORIGINS=*
+    command: redis-server --appendonly yes
 
 volumes:
   mongodb_data:
-  ollama_data:
+  redis_data:
 
 networks:
   smart-task-network:

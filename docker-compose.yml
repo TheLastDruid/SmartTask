@@ -38,7 +38,6 @@ services:
       - SPRING_DATA_MONGODB_DATABASE=todoapp
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
-      - OLLAMA_BASE_URL=http://ollama:11434
     depends_on:
       - mongodb
       - redis
@@ -60,23 +59,9 @@ services:
     networks:
       - smart-task-network
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: smart-task-ollama
-    restart: unless-stopped
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    networks:
-      - smart-task-network
-    environment:
-      - OLLAMA_ORIGINS=*
-
 volumes:
   mongodb_data:
   redis_data:
-  ollama_data:
 
 networks:
   smart-task-network:

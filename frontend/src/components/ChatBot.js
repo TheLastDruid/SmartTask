@@ -246,12 +246,11 @@ const ChatBot = () => {
     }  };
   
   return (
-    <>
-      {/* Floating Chat Button */}
+    <>      {/* Floating Chat Button */}
       {!isOpen && (
         <button
           onClick={toggleChatBot}
-          className="fixed bottom-24 right-6 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg z-[1001] transition-all duration-300 hover:scale-110"
+          className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-2xl z-[1001] transition-all duration-300 hover:scale-110 hover:shadow-blue-500/25"
           title="Open Smart Assistant"
         >
           <MessageCircle size={24} />
@@ -260,13 +259,14 @@ const ChatBot = () => {
 
       {/* Chat Sidebar */}
       {isOpen && (
-        <div className={`fixed top-0 right-0 h-full bg-white shadow-2xl border-l z-[1001] transition-all duration-300 ${
-          isMinimized ? 'w-16' : 'w-96'
-        }`}>
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b bg-blue-600 text-white">
-            <div className={`flex items-center space-x-2 ${isMinimized ? 'justify-center w-full' : ''}`}>
-              <Bot size={20} />
+        <div className={`fixed top-0 right-0 h-full bg-white shadow-2xl border-l border-gray-200 z-[1001] transition-all duration-300 flex flex-col ${
+          isMinimized ? 'w-16' : 'w-full sm:w-96'
+        }`}>          {/* Header */}
+          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-sm">
+            <div className={`flex items-center space-x-3 ${isMinimized ? 'justify-center w-full' : ''}`}>
+              <div className="p-2 bg-white/10 rounded-lg">
+                <Bot size={20} />
+              </div>
               {!isMinimized && <span className="font-semibold">Smart Assistant</span>}
             </div>
             {!isMinimized && (
@@ -306,37 +306,36 @@ const ChatBot = () => {
           </div>
 
           {!isMinimized && (
-            <>
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ height: 'calc(100vh - 200px)' }}>
+            <>              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide" style={{ height: 'calc(100vh - 160px)' }}>
                 {messages.map((message) => (
                   <div
                     key={message.id}
-                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2`}
                   >
-                    <div className={`flex items-start space-x-2 max-w-[85%] ${
+                    <div className={`flex items-start space-x-3 max-w-[85%] ${
                       message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''
                     }`}>
-                      <div className={`p-2 rounded-full flex-shrink-0 ${
+                      <div className={`p-2 rounded-full flex-shrink-0 shadow-sm ${
                         message.type === 'user' 
                           ? 'bg-blue-100 text-blue-600' 
                           : 'bg-gray-100 text-gray-600'
                       }`}>
                         {message.type === 'user' ? <User size={16} /> : <Bot size={16} />}
                       </div>
-                      <div className={`p-3 rounded-lg ${
+                      <div className={`p-3 rounded-2xl shadow-sm ${
                         message.type === 'user'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 text-gray-800'
+                          ? 'bg-blue-600 text-white rounded-br-md'
+                          : 'bg-gray-100 text-gray-800 rounded-bl-md'
                       }`}>
                         {message.isFile ? (
                           <div className="flex items-center space-x-2">
                             <FileText size={16} />
                             <span className="text-sm">{message.content}</span>
-                          </div>
-                        ) : (
-                          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                        )}                        <div className="text-xs opacity-70 mt-1">
+                          </div>                        ) : (
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                        )}
+                        <div className="text-xs opacity-70 mt-2 font-medium">
                           {(() => {
                             const timestamp = message.timestamp instanceof Date 
                               ? message.timestamp 
@@ -370,17 +369,15 @@ const ChatBot = () => {
                 )}
 
                 <div ref={messagesEndRef} />
-              </div>
-
-              {/* Task Confirmation */}
+              </div>              {/* Task Confirmation */}
               {showTaskConfirmation && pendingTasks.length > 0 && (
-                <div className="border-t bg-yellow-50 p-4">
-                  <p className="text-sm font-medium text-yellow-800 mb-2">
-                    Found {pendingTasks.length} tasks:
+                <div className="border-t bg-gradient-to-r from-yellow-50 to-orange-50 p-4 shadow-inner">
+                  <p className="text-sm font-semibold text-yellow-800 mb-3">
+                    🎯 Found {pendingTasks.length} tasks:
                   </p>
-                  <div className="space-y-1 mb-3 max-h-20 overflow-y-auto">
+                  <div className="space-y-2 mb-4 max-h-20 overflow-y-auto">
                     {pendingTasks.map((task, index) => (
-                      <div key={index} className="text-xs text-yellow-700">
+                      <div key={index} className="text-xs text-yellow-700 bg-white/50 rounded-lg p-2">
                         • {task.title}
                       </div>
                     ))}
@@ -388,7 +385,7 @@ const ChatBot = () => {
                   <div className="flex space-x-2">
                     <button
                       onClick={() => handleConfirmTasks(true)}
-                      className="flex items-center space-x-1 bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700"
+                      className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors shadow-sm"
                       disabled={isLoading}
                     >
                       <CheckCircle size={14} />
@@ -396,7 +393,7 @@ const ChatBot = () => {
                     </button>
                     <button
                       onClick={() => handleConfirmTasks(false)}
-                      className="flex items-center space-x-1 bg-gray-600 text-white px-3 py-1 rounded text-xs hover:bg-gray-700"
+                      className="flex items-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700 transition-colors shadow-sm"
                       disabled={isLoading}
                     >
                       <XCircle size={14} />
@@ -404,24 +401,22 @@ const ChatBot = () => {
                     </button>
                   </div>
                 </div>
-              )}
-
-              {/* Input Area */}
-              <div className="absolute bottom-0 left-0 right-0 border-t bg-white p-4 space-y-2">
-                <div className="flex space-x-2">
+              )}              {/* Input Area */}
+              <div className="border-t bg-white p-4 space-y-3 shadow-lg">
+                <div className="flex space-x-3">
                   <input
                     type="text"
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Type your message..."
-                    className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     disabled={isLoading}
                   />
                   <button
                     onClick={handleSendMessage}
                     disabled={!inputMessage.trim() || isLoading}
-                    className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
                   >
                     <Send size={16} />
                   </button>
@@ -439,12 +434,12 @@ const ChatBot = () => {
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isLoading}
-                    className="flex items-center space-x-1 text-gray-600 hover:text-gray-800 text-xs"
+                    className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 text-xs bg-gray-50 hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors"
                   >
                     <Upload size={14} />
                     <span>Upload file</span>
                   </button>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-gray-500 font-medium">
                     .txt, .pdf, .docx
                   </div>
                 </div>
