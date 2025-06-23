@@ -129,3 +129,6 @@ test_*.ps1
 # Environment and configuration backups
 docker-compose-*.yml
 !docker-compose.yml
+
+# AI Agent Instructions (internal development documentation)
+AI_AGENT_INSTRUCTIONS.md
