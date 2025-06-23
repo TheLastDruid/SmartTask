@@ -125,9 +125,7 @@ public class ChatBotService {    @Autowired
             String action = (actionNode != null && !actionNode.isNull()) ? actionNode.asText() : "GENERAL_HELP";
             String responseMessage = (responseNode != null && !responseNode.isNull()) ? responseNode.asText("I'm here to help with your tasks!") : "I'm here to help with your tasks!";
 
-            ChatResponse chatResponse = new ChatResponse(responseMessage, conversationId);
-
-            switch (action) {
+            ChatResponse chatResponse = new ChatResponse(responseMessage, conversationId);            switch (action) {
                 case "CREATE_TASK":
                     return handleCreateTask(responseJson, userId, conversationId);
                 
@@ -138,6 +136,9 @@ public class ChatBotService {    @Autowired
                 case "DELETE_TASK":
                 case "MARK_COMPLETE":
                     return handleTaskModification(action, responseJson, userId, conversationId);
+                
+                case "BULK_MARK_COMPLETE":
+                    return handleBulkMarkComplete(userId, conversationId);
                 
                 default:
                     return chatResponse;
@@ -405,6 +406,25 @@ public class ChatBotService {    @Autowired
             System.err.println("ERROR: Exception in handleUpdateTask: " + e.getMessage());
             e.printStackTrace();
             return new ChatResponse(String.format("Sorry, I couldn't update the task '%s'. Please try again.", targetTask.getTitle()), conversationId);
+        }
+    }
+    
+    private ChatResponse handleBulkMarkComplete(String userId, String conversationId) {
+        try {
+            int updatedCount = taskService.bulkMarkTasksComplete(userId);
+            
+            if (updatedCount == 0) {
+                return new ChatResponse("All your tasks are already complete! 🎉", conversationId);
+            } else if (updatedCount == 1) {
+                return new ChatResponse("✅ Marked 1 task as complete! Great job! 🎉", conversationId);
+            } else {
+                return new ChatResponse(String.format("✅ Marked %d tasks as complete! Amazing work! 🎉", updatedCount), conversationId);
+            }
+            
+        } catch (Exception e) {
+            System.err.println("ERROR: Exception in handleBulkMarkComplete: " + e.getMessage());
+            e.printStackTrace();
+            return new ChatResponse("Sorry, I couldn't mark all tasks as complete. Please try again.", conversationId);
         }
     }
 }

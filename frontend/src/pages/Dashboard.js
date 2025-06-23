@@ -37,17 +37,9 @@ const Dashboard = () => {
       );
     }
 
-    setFilteredTasks(filtered);
-  }, [tasks, filter, searchTerm]);
+    setFilteredTasks(filtered);  }, [tasks, filter, searchTerm]);
 
-  useEffect(() => {
-    fetchTasks();
-  }, []);
-
-  useEffect(() => {
-    filterTasks();
-  }, [tasks, filter, searchTerm, filterTasks]);
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     try {
       setLoading(true);
       const response = await taskService.getAllTasks();
@@ -59,7 +51,14 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [setTasks]);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
+  useEffect(() => {
+    filterTasks();
+  }, [tasks, filter, searchTerm, filterTasks]);
 
   const handleCreateTask = async (taskData) => {
     try {
@@ -316,21 +315,19 @@ const Dashboard = () => {
               </button>
             )}
           </div>        ) : (
-          <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredTasks.map((task, index) => (
-              <div
-                key={task.id}
-                className="slide-up transform transition-all duration-300 hover:scale-[1.02]"
-                style={{ animationDelay: `${0.6 + index * 0.05}s` }}
-              >
-                <TaskCard
-                  task={task}
-                  onEdit={openEditModal}
-                  onDelete={handleDeleteTask}
-                  onStatusChange={handleStatusChange}
-                />
-              </div>
-            ))}
+          <div className="w-full px-4">
+            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredTasks.map((task, index) => (
+                <div key={task.id} className="slide-up" style={{ animationDelay: `${0.6 + index * 0.05}s` }}>
+                  <TaskCard
+                    task={task}
+                    onEdit={openEditModal}
+                    onDelete={handleDeleteTask}
+                    onStatusChange={handleStatusChange}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>      {/* Task Modal */}

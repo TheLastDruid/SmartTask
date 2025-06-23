@@ -23,14 +23,37 @@ export const useRealTimeTasks = (initialTasks = []) => {
     const interval = setInterval(checkConnection, 2000);
 
     return () => clearInterval(interval);
-  }, []);
-  // Handle real-time task updates
+  }, []);  // Handle real-time task updates
   const handleTaskUpdate = useCallback((message) => {
     console.log('🔔 Frontend received task update:', message);
-    const { action, data, taskId } = message;
+    const { action, data, taskId, type } = message;
     
+    // Handle bulk updates
+    if (type === 'BULK_TASK_UPDATE') {
+      console.log('Processing bulk task update:', action, data);
+      setTasks(prevTasks => {
+        switch (action) {
+          case 'BULK_MARK_COMPLETE': {
+            // Mark all specified tasks as complete
+            const updatedTaskIds = data.map(task => task.id);
+            const updatedTasks = prevTasks.map(task => 
+              updatedTaskIds.includes(task.id) 
+                ? { ...task, status: 'DONE' }
+                : task
+            );
+            toast.success(`${data.length} tasks marked as complete!`, { position: 'bottom-right' });
+            return updatedTasks;
+          }
+          default:
+            return prevTasks;
+        }
+      });
+      return;
+    }
+    
+    // Handle individual task updates
     setTasks(prevTasks => {
-      switch (action) {        case 'CREATE': {
+      switch (action) {case 'CREATE': {
           // Add new task if it doesn't exist
           if (!prevTasks.find(task => task.id === data.id)) {
             toast.success('New task created!', { position: 'bottom-right' });

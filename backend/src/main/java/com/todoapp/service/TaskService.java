@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -100,6 +101,34 @@ public class TaskService {
             .orElseThrow(() -> new RuntimeException("Task not found"));
         
         return new TaskResponse(task);
+    }    public int bulkMarkTasksComplete(String userId) {
+        List<Task> tasks = taskRepository.findByUserId(userId);
+        int updatedCount = 0;
+        List<TaskResponse> updatedTasks = new ArrayList<>();
+        
+        for (Task task : tasks) {
+            if (task.getStatus() != TaskStatus.DONE) {
+                task.setStatus(TaskStatus.DONE);
+                task.setUpdatedAt(LocalDateTime.now());
+                taskRepository.save(task);
+                updatedCount++;
+                updatedTasks.add(new TaskResponse(task));
+            }
+        }
+        
+        // Invalidate cache first
+        redisPublisher.invalidateUserTasksCache(userId);
+        
+        // Get fresh data and cache it
+        List<TaskResponse> freshTasks = getAllTasksForUser(userId);
+        redisPublisher.cacheUserTasks(userId, freshTasks);
+        
+        // Publish a single bulk update event
+        if (updatedCount > 0) {
+            redisPublisher.publishBulkTaskUpdate(userId, "BULK_MARK_COMPLETE", updatedTasks);
+        }
+        
+        return updatedCount;
     }
 
     private String sanitizeInput(String input) {

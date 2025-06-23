@@ -61,8 +61,7 @@ public class GroqService {
         
         // Simple keyword-based response when API is unavailable
         String lowerMessage = userMessage.toLowerCase();
-        
-        if (lowerMessage.contains("create") || lowerMessage.contains("add") || lowerMessage.contains("task")) {
+          if (lowerMessage.contains("create") || lowerMessage.contains("add") || lowerMessage.contains("task")) {
             return "{\n" +
                    "  \"action\": \"CREATE_TASK\",\n" +
                    "  \"taskTitle\": \"" + extractTaskTitle(userMessage) + "\",\n" +
@@ -81,6 +80,17 @@ public class GroqService {
                    "  \"priority\": \"MEDIUM\",\n" +
                    "  \"searchQuery\": null,\n" +
                    "  \"response\": \"Here are your tasks. Note: AI assistant is temporarily unavailable.\"\n" +
+                   "}";
+        } else if ((lowerMessage.contains("mark") || lowerMessage.contains("update") || lowerMessage.contains("complete")) 
+                   && (lowerMessage.contains("all") || lowerMessage.contains("everything"))) {
+            return "{\n" +
+                   "  \"action\": \"BULK_MARK_COMPLETE\",\n" +
+                   "  \"taskTitle\": null,\n" +
+                   "  \"taskDescription\": null,\n" +
+                   "  \"dueDate\": null,\n" +
+                   "  \"priority\": \"MEDIUM\",\n" +
+                   "  \"searchQuery\": null,\n" +
+                   "  \"response\": \"I'll mark all your tasks as complete!\"\n" +
                    "}";
         } else {
             return "{\n" +
@@ -115,14 +125,17 @@ public class GroqService {
             User message: "%s"
             
             IMPORTANT: Extract ACTUAL information from the user's message. Do NOT use placeholder text.
-            
-            Examples:
+              Examples:
             - "Create a task to buy groceries" → taskTitle: "Buy groceries", taskDescription: "Purchase groceries", action: "CREATE_TASK"
             - "Add task Study Math with Sarah tomorrow at 3pm high priority" → taskTitle: "Study Math with Sarah", taskDescription: "Study session with Sarah", dueDate: "2025-06-23", priority: "HIGH", action: "CREATE_TASK"
             - "Update task buy groceries to high priority" → searchQuery: "buy groceries", priority: "HIGH", action: "UPDATE_TASK"
             - "Change the due date of math homework to tomorrow" → searchQuery: "math homework", dueDate: "2025-06-23", action: "UPDATE_TASK"
             - "Mark buy groceries as complete" → searchQuery: "buy groceries", action: "MARK_COMPLETE"
             - "Delete the task study math" → searchQuery: "study math", action: "DELETE_TASK"
+            - "Mark all my tasks as done" → action: "BULK_MARK_COMPLETE"
+            - "Update all tasks to done" → action: "BULK_MARK_COMPLETE"
+            - "Complete all my tasks" → action: "BULK_MARK_COMPLETE"
+            - "Mark everything as complete" → action: "BULK_MARK_COMPLETE"
             - "Show my tasks" → action: "LIST_TASKS"
             - "I need help" → action: "GENERAL_HELP"
             
@@ -130,18 +143,18 @@ public class GroqService {
             - Use searchQuery to identify which task the user is referring to
             - Extract any new values they want to change (title, description, priority, dueDate)
             - searchQuery should contain the task name/keywords the user mentioned
-            
-            Possible actions:
+              Possible actions:
             1. CREATE_TASK - User wants to add a new task
             2. LIST_TASKS - User wants to see their tasks  
             3. UPDATE_TASK - User wants to modify an existing task (change title, description, priority, due date)
             4. DELETE_TASK - User wants to remove a task
             5. MARK_COMPLETE - User wants to mark a task as done
-            6. GENERAL_HELP - User needs help or has a general question
+            6. BULK_MARK_COMPLETE - User wants to mark ALL tasks as done
+            7. GENERAL_HELP - User needs help or has a general question
             
             Response format (JSON only, no extra text):
             {
-              "action": "CREATE_TASK|LIST_TASKS|UPDATE_TASK|DELETE_TASK|MARK_COMPLETE|GENERAL_HELP",
+              "action": "CREATE_TASK|LIST_TASKS|UPDATE_TASK|DELETE_TASK|MARK_COMPLETE|BULK_MARK_COMPLETE|GENERAL_HELP",
               "taskTitle": "actual extracted title from user message or null",
               "taskDescription": "actual extracted description from user message or null", 
               "dueDate": "YYYY-MM-DD format if date mentioned, or null",

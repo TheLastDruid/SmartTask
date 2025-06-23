@@ -82,6 +82,28 @@ public class RedisPublisher {
         }
     }
 
+    public void publishBulkTaskUpdate(String userId, String action, Object updatedTasks) {
+        try {
+            Map<String, Object> message = new HashMap<>();
+            message.put("userId", userId);
+            message.put("action", action); // BULK_MARK_COMPLETE, BULK_DELETE, etc.
+            message.put("data", updatedTasks);
+            message.put("timestamp", System.currentTimeMillis());
+            message.put("type", "BULK_TASK_UPDATE");
+
+            String jsonMessage = objectMapper.writeValueAsString(message);
+            
+            // Publish to general task channel
+            redisTemplate.convertAndSend(TASK_CHANNEL, jsonMessage);
+            
+            // Publish to user-specific channel
+            redisTemplate.convertAndSend(getUserChannel(userId), jsonMessage);
+            
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Error publishing bulk task update", e);
+        }
+    }
+
     private String getUserChannel(String userId) {
         return "user_" + userId;
     }    // Cache operations for frequently accessed data

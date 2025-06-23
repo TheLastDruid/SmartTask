@@ -29,7 +29,13 @@ api.interceptors.response.use(
     console.log('Error config URL:', error.config?.url);
     console.log('Error status:', error.response?.status);
     
-    if (error.response?.status === 401) {
+    // Check for JWT signature errors
+    const errorMessage = error.response?.data?.message || error.message || '';
+    const isJwtSignatureError = errorMessage.includes('JWT signature does not match') || 
+                               errorMessage.includes('signature') ||
+                               error.response?.status === 403;
+    
+    if (error.response?.status === 401 || isJwtSignatureError) {
       // Don't redirect if this is a login or register request
       const isAuthRequest = error.config?.url?.includes('/api/auth/login') || 
                            error.config?.url?.includes('/api/auth/register');
@@ -39,10 +45,8 @@ api.interceptors.response.use(
                               error.config?.url?.includes('/api/auth/me');
       
       if (!isAuthRequest && !isVerifyRequest) {
-        console.log('401 error from protected route, redirecting to login');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        console.log('JWT authentication error, clearing invalid token and redirecting');
+        clearInvalidToken();
       } else {
         console.log('401 error from auth endpoint, not redirecting');
       }
@@ -103,6 +107,22 @@ export const logout = () => {
   localStorage.removeItem('user');
   // Clear the auth token from axios defaults
   delete api.defaults.headers.common['Authorization'];
+};
+
+// Function to clear invalid tokens
+const clearInvalidToken = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  // Reload the page to reset the application state
+  window.location.reload();
+};
+
+// Export function for manual token clearing (useful for debugging)
+window.clearInvalidToken = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  console.log('Token cleared! Reloading page...');
+  window.location.reload();
 };
 
 export default api;
