@@ -13,13 +13,19 @@ import java.util.Map;
 public class HealthController {
 
     @Autowired
-    private RedisTemplate<String, Object> redisTemplate;
-
-    @GetMapping("/health")
+    private RedisTemplate<String, Object> redisTemplate;    @GetMapping("/health")
     public ResponseEntity<Map<String, String>> health() {
         Map<String, String> status = new HashMap<>();
         status.put("status", "UP");
         status.put("service", "SmartTask Backend");
+        return ResponseEntity.ok(status);
+    }
+
+    @GetMapping("/api/health")
+    public ResponseEntity<Map<String, String>> apiHealth() {
+        Map<String, String> status = new HashMap<>();
+        status.put("status", "SmartTask API is running");
+        status.put("timestamp", String.valueOf(System.currentTimeMillis()));
         return ResponseEntity.ok(status);
     }
 

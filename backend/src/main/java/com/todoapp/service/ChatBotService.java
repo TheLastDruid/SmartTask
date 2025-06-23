@@ -251,17 +251,160 @@ public class ChatBotService {    @Autowired
         } catch (Exception e) {
             return new ChatResponse("Sorry, I couldn't retrieve your tasks. Please try again.", conversationId);
         }
+    }    private ChatResponse handleTaskModification(String action, JsonNode responseJson, String userId, String conversationId) {
+        try {
+            // Extract information from the AI response
+            JsonNode searchQueryNode = responseJson.get("searchQuery");
+            JsonNode taskTitleNode = responseJson.get("taskTitle");
+            JsonNode responseMessageNode = responseJson.get("response");
+            
+            String searchQuery = (searchQueryNode != null && !searchQueryNode.isNull()) ? searchQueryNode.asText() : null;
+            String taskTitle = (taskTitleNode != null && !taskTitleNode.isNull()) ? taskTitleNode.asText() : null;
+            String responseMessage = (responseMessageNode != null && !responseMessageNode.isNull()) ? 
+                responseMessageNode.asText() : "I'll help you with that task.";
+            
+            // Get all user tasks to search through
+            List<TaskResponse> allTasks = taskService.getAllTasksForUser(userId);
+            
+            if (allTasks.isEmpty()) {
+                return new ChatResponse("You don't have any tasks to modify. Would you like to create a new task instead?", conversationId);
+            }
+            
+            // Find the task to modify
+            TaskResponse targetTask = null;
+            String searchTerm = searchQuery != null ? searchQuery : taskTitle;
+            
+            if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+                // Search for task by title (case-insensitive partial match)
+                for (TaskResponse task : allTasks) {
+                    if (task.getTitle().toLowerCase().contains(searchTerm.toLowerCase())) {
+                        targetTask = task;
+                        break;
+                    }
+                }
+            }
+            
+            if (targetTask == null) {
+                // If no specific task found, show available tasks
+                StringBuilder message = new StringBuilder();
+                message.append("I couldn't find a specific task to modify. Here are your current tasks:\n\n");
+                for (int i = 0; i < allTasks.size(); i++) {
+                    TaskResponse task = allTasks.get(i);
+                    message.append(String.format("%d. %s (%s)\n", i + 1, task.getTitle(), task.getStatus()));
+                }
+                message.append("\nPlease specify which task you'd like to ").append(
+                    switch (action) {
+                        case "UPDATE_TASK" -> "update";
+                        case "DELETE_TASK" -> "delete";
+                        case "MARK_COMPLETE" -> "mark as complete";
+                        default -> "modify";
+                    }
+                ).append(" by mentioning its name.");
+                
+                return new ChatResponse(message.toString(), conversationId);
+            }
+            
+            // Perform the requested action
+            switch (action) {
+                case "UPDATE_TASK":
+                    return handleUpdateTask(targetTask, responseJson, userId, conversationId);
+                    
+                case "DELETE_TASK":
+                    taskService.deleteTask(targetTask.getId(), userId);
+                    return new ChatResponse(String.format("✅ Successfully deleted the task '%s'.", targetTask.getTitle()), conversationId);
+                    
+                case "MARK_COMPLETE":
+                    TaskRequest updateRequest = new TaskRequest();
+                    updateRequest.setStatus(TaskStatus.DONE);
+                    TaskResponse updatedTask = taskService.updateTask(targetTask.getId(), updateRequest, userId);
+                    return new ChatResponse(String.format("✅ Marked '%s' as complete! Great job!", updatedTask.getTitle()), conversationId);
+                    
+                default:
+                    return new ChatResponse("I can help you update, delete, or mark tasks as complete. What would you like to do?", conversationId);
+            }
+            
+        } catch (Exception e) {
+            System.err.println("ERROR: Exception in handleTaskModification: " + e.getMessage());
+            e.printStackTrace();
+            String message = switch (action) {
+                case "UPDATE_TASK" -> "Sorry, I couldn't update the task. Please try again with the task name.";
+                case "DELETE_TASK" -> "Sorry, I couldn't delete the task. Please try again with the task name.";
+                case "MARK_COMPLETE" -> "Sorry, I couldn't mark the task as complete. Please try again with the task name.";
+                default -> "Sorry, I couldn't perform that task operation. Please try again.";
+            };
+            return new ChatResponse(message, conversationId);
+        }
     }
-
-    private ChatResponse handleTaskModification(String action, JsonNode responseJson, String userId, String conversationId) {
-        // For now, return a helpful message about task modification
-        String message = switch (action) {
-            case "UPDATE_TASK" -> "To update a task, please specify which task you'd like to modify and what changes you want to make.";
-            case "DELETE_TASK" -> "To delete a task, please specify which task you'd like to remove.";
-            case "MARK_COMPLETE" -> "To mark a task as complete, please specify which task you've finished.";
-            default -> "I can help you manage your tasks. What would you like to do?";
-        };
-        
-        return new ChatResponse(message, conversationId);
+    
+    private ChatResponse handleUpdateTask(TaskResponse targetTask, JsonNode responseJson, String userId, String conversationId) {
+        try {
+            TaskRequest updateRequest = new TaskRequest();
+            boolean hasUpdates = false;
+            StringBuilder changesSummary = new StringBuilder();
+            
+            // Check for title updates
+            JsonNode taskTitleNode = responseJson.get("taskTitle");
+            if (taskTitleNode != null && !taskTitleNode.isNull()) {
+                String newTitle = taskTitleNode.asText().trim();
+                if (!newTitle.isEmpty() && !newTitle.equals(targetTask.getTitle())) {
+                    updateRequest.setTitle(newTitle);
+                    changesSummary.append(String.format("• Title: '%s' → '%s'\n", targetTask.getTitle(), newTitle));
+                    hasUpdates = true;
+                }
+            }
+            
+            // Check for description updates
+            JsonNode taskDescriptionNode = responseJson.get("taskDescription");
+            if (taskDescriptionNode != null && !taskDescriptionNode.isNull()) {
+                String newDescription = taskDescriptionNode.asText().trim();
+                if (!newDescription.isEmpty()) {
+                    updateRequest.setDescription(newDescription);
+                    changesSummary.append(String.format("• Description updated\n"));
+                    hasUpdates = true;
+                }
+            }
+            
+            // Check for priority updates
+            JsonNode priorityNode = responseJson.get("priority");
+            if (priorityNode != null && !priorityNode.isNull()) {
+                String newPriority = priorityNode.asText().toUpperCase();
+                if (newPriority.matches("HIGH|MEDIUM|LOW")) {
+                    updateRequest.setPriority(newPriority);
+                    changesSummary.append(String.format("• Priority: %s\n", newPriority));
+                    hasUpdates = true;
+                }
+            }
+            
+            // Check for due date updates
+            JsonNode dueDateNode = responseJson.get("dueDate");
+            if (dueDateNode != null && !dueDateNode.isNull()) {
+                String dateString = dueDateNode.asText();
+                try {
+                    LocalDateTime dueDate = LocalDateTime.parse(dateString + "T00:00:00");
+                    updateRequest.setDueDate(dueDate);
+                    changesSummary.append(String.format("• Due date: %s\n", dateString));
+                    hasUpdates = true;
+                } catch (Exception e) {
+                    System.out.println("DEBUG: Could not parse due date: " + dateString);
+                }
+            }
+            
+            if (!hasUpdates) {
+                return new ChatResponse(String.format("I found the task '%s' but I'm not sure what changes you want to make. Please specify what you'd like to update (title, description, priority, or due date).", targetTask.getTitle()), conversationId);
+            }
+            
+            // Apply the updates
+            TaskResponse updatedTask = taskService.updateTask(targetTask.getId(), updateRequest, userId);
+            
+            String message = String.format("✅ Successfully updated '%s'!\n\nChanges made:\n%s", 
+                updatedTask.getTitle(), changesSummary.toString());
+            
+            return new ChatResponse(message, conversationId);
+            
+        } catch (Exception e) {
+            System.err.println("ERROR: Exception in handleUpdateTask: " + e.getMessage());
+            e.printStackTrace();
+            return new ChatResponse(String.format("Sorry, I couldn't update the task '%s'. Please try again.", targetTask.getTitle()), conversationId);
+        }
     }
 }

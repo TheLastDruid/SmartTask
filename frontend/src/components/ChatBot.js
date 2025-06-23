@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   MessageCircle, 
   Send, 
@@ -26,24 +26,19 @@ const ChatBot = () => {
   const [pendingTasks, setPendingTasks] = useState([]);
   const [showTaskConfirmation, setShowTaskConfirmation] = useState(false);
   const { user } = useAuth();
-  
-  const messagesEndRef = useRef(null);
-  const fileInputRef = useRef(null);  // Load conversation from backend on component mount, fallback to localStorage
-  useEffect(() => {
-    if (user && user.id) {
-      const mainConversationId = `main_${user.id}`;
-      setConversationId(mainConversationId);
-      loadConversationHistory(mainConversationId);
-    }
-  }, [user]);
+    const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
 
-  const loadConversationHistory = async (convId) => {
+  const loadConversationHistory = useCallback(async (convId) => {
     if (!user || !convId) return;
+    
+    console.log('DEBUG: Loading conversation history for:', convId);
     
     try {
       // Try to load from backend first
       const conversation = await chatService.getMainConversation();
       if (conversation && conversation.messages && conversation.messages.length > 0) {
+        console.log('DEBUG: Loaded from backend:', conversation.messages.length, 'messages');
         const backendMessages = conversation.messages.map(msg => ({
           id: msg.id || uuidv4(),
           type: msg.role === 'user' ? 'user' : 'bot',
@@ -54,7 +49,11 @@ const ChatBot = () => {
         }));
         setMessages(backendMessages);
         // Also save to localStorage as backup
-        saveConversation(backendMessages);
+        try {
+          localStorage.setItem(`chatbot-conversation-${convId}`, JSON.stringify(backendMessages));
+        } catch (error) {
+          console.error('Error saving conversation to localStorage:', error);
+        }
         return;
       }
     } catch (error) {
@@ -65,6 +64,7 @@ const ChatBot = () => {
     if (savedConversation) {
       try {
         const parsedMessages = JSON.parse(savedConversation);
+        console.log('DEBUG: Loaded from localStorage:', parsedMessages.length, 'messages');
         // Convert timestamp strings back to Date objects
         const messagesWithDates = parsedMessages.map(message => ({
           ...message,
@@ -73,28 +73,52 @@ const ChatBot = () => {
         setMessages(messagesWithDates);
       } catch (error) {
         console.error('Error loading saved conversation:', error);        // Initialize with welcome message if loading fails
-        initializeConversation();
+        const welcomeMessage = {
+          id: uuidv4(),
+          type: 'bot',
+          content: 'Hi! I\'m your smart task assistant. I can help you manage your tasks, upload files to extract action items, and answer questions about your to-do list. How can I help you today?',
+          timestamp: new Date()
+        };
+        setMessages([welcomeMessage]);
+        try {
+          localStorage.setItem(`chatbot-conversation-${convId}`, JSON.stringify([welcomeMessage]));
+        } catch (error) {
+          console.error('Error saving welcome message to localStorage:', error);
+        }
       }
     } else {
-      initializeConversation();
+      console.log('DEBUG: No saved conversation found, initializing');
+      const welcomeMessage = {
+        id: uuidv4(),
+        type: 'bot',
+        content: 'Hi! I\'m your smart task assistant. I can help you manage your tasks, upload files to extract action items, and answer questions about your to-do list. How can I help you today?',
+        timestamp: new Date()
+      };
+      setMessages([welcomeMessage]);
+      try {
+        localStorage.setItem(`chatbot-conversation-${convId}`, JSON.stringify([welcomeMessage]));
+      } catch (error) {
+        console.error('Error saving welcome message to localStorage:', error);
+      }
     }
-  };
+  }, [user]);
 
-  const initializeConversation = () => {
-    const welcomeMessage = {
-      id: uuidv4(),
-      type: 'bot',
-      content: 'Hi! I\'m your smart task assistant. I can help you manage your tasks, upload files to extract action items, and answer questions about your to-do list. How can I help you today?',
-      timestamp: new Date()
-    };
-    setMessages([welcomeMessage]);
-    saveConversation([welcomeMessage]);
-  };
-
+  // Load conversation from backend on component mount, fallback to localStorage
+  useEffect(() => {
+    console.log('DEBUG: useEffect triggered, user:', user?.id, 'conversationId:', conversationId);
+    if (user && user.id && !conversationId) {
+      const mainConversationId = `main_${user.id}`;
+      console.log('DEBUG: Setting conversation ID:', mainConversationId);
+      setConversationId(mainConversationId);
+      loadConversationHistory(mainConversationId);
+    }
+  }, [user, conversationId, loadConversationHistory]);
   // Save conversation to localStorage whenever messages change
   const saveConversation = (messagesToSave) => {
     try {
-      localStorage.setItem(`chatbot-conversation-${conversationId}`, JSON.stringify(messagesToSave));
+      if (conversationId) {
+        localStorage.setItem(`chatbot-conversation-${conversationId}`, JSON.stringify(messagesToSave));
+      }
     } catch (error) {
       console.error('Error saving conversation:', error);
     }
@@ -114,9 +138,17 @@ const ChatBot = () => {
       timestamp: new Date(),
       ...additionalData
     };
-    const updatedMessages = [...messages, newMessage];
-    setMessages(updatedMessages);
-    saveConversation(updatedMessages);
+    console.log('DEBUG: Adding message:', newMessage);
+    console.log('DEBUG: Current messages before add:', messages.length);
+    
+    setMessages(prevMessages => {
+      const updatedMessages = [...prevMessages, newMessage];
+      console.log('DEBUG: Updated messages after add:', updatedMessages.length);
+      // Save to localStorage in the state setter to ensure it happens after state update
+      setTimeout(() => saveConversation(updatedMessages), 0);
+      return updatedMessages;
+    });
+    
     return newMessage;
   };
   const handleSendMessage = async () => {
@@ -238,11 +270,22 @@ const ChatBot = () => {
   const toggleMinimize = () => {
     setIsMinimized(!isMinimized);
   };
-
   const clearConversation = () => {
     if (window.confirm('Are you sure you want to clear the conversation? This cannot be undone.')) {
       localStorage.removeItem(`chatbot-conversation-${conversationId}`);
-      initializeConversation();
+      // Initialize with welcome message
+      const welcomeMessage = {
+        id: uuidv4(),
+        type: 'bot',
+        content: 'Hi! I\'m your smart task assistant. I can help you manage your tasks, upload files to extract action items, and answer questions about your to-do list. How can I help you today?',
+        timestamp: new Date()
+      };
+      setMessages([welcomeMessage]);
+      try {
+        localStorage.setItem(`chatbot-conversation-${conversationId}`, JSON.stringify([welcomeMessage]));
+      } catch (error) {
+        console.error('Error saving welcome message to localStorage:', error);
+      }
     }  };
   
   return (

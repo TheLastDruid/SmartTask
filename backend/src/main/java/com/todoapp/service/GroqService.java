@@ -108,9 +108,7 @@ public class GroqService {
         String prompt = createTaskExtractionPrompt(text);
         String response = callGroq(prompt);
         return parseTasksFromResponse(response);
-    }
-
-    private String createTaskManagementPrompt(String userMessage) {
+    }    private String createTaskManagementPrompt(String userMessage) {
         return """
             You are a helpful task management assistant. Analyze the user's message and extract specific information to determine what action they want to perform.
             
@@ -120,14 +118,23 @@ public class GroqService {
             
             Examples:
             - "Create a task to buy groceries" → taskTitle: "Buy groceries", taskDescription: "Purchase groceries", action: "CREATE_TASK"
-            - "Add task Study Math with Sarah tomorrow at 3pm high priority" → taskTitle: "Study Math with Sarah", taskDescription: "Study session with Sarah", dueDate: "2025-06-16", priority: "HIGH", action: "CREATE_TASK"
+            - "Add task Study Math with Sarah tomorrow at 3pm high priority" → taskTitle: "Study Math with Sarah", taskDescription: "Study session with Sarah", dueDate: "2025-06-23", priority: "HIGH", action: "CREATE_TASK"
+            - "Update task buy groceries to high priority" → searchQuery: "buy groceries", priority: "HIGH", action: "UPDATE_TASK"
+            - "Change the due date of math homework to tomorrow" → searchQuery: "math homework", dueDate: "2025-06-23", action: "UPDATE_TASK"
+            - "Mark buy groceries as complete" → searchQuery: "buy groceries", action: "MARK_COMPLETE"
+            - "Delete the task study math" → searchQuery: "study math", action: "DELETE_TASK"
             - "Show my tasks" → action: "LIST_TASKS"
             - "I need help" → action: "GENERAL_HELP"
+            
+            For UPDATE_TASK, DELETE_TASK, and MARK_COMPLETE actions:
+            - Use searchQuery to identify which task the user is referring to
+            - Extract any new values they want to change (title, description, priority, dueDate)
+            - searchQuery should contain the task name/keywords the user mentioned
             
             Possible actions:
             1. CREATE_TASK - User wants to add a new task
             2. LIST_TASKS - User wants to see their tasks  
-            3. UPDATE_TASK - User wants to modify an existing task
+            3. UPDATE_TASK - User wants to modify an existing task (change title, description, priority, due date)
             4. DELETE_TASK - User wants to remove a task
             5. MARK_COMPLETE - User wants to mark a task as done
             6. GENERAL_HELP - User needs help or has a general question
@@ -139,11 +146,12 @@ public class GroqService {
               "taskDescription": "actual extracted description from user message or null", 
               "dueDate": "YYYY-MM-DD format if date mentioned, or null",
               "priority": "HIGH|MEDIUM|LOW if mentioned, or MEDIUM",
-              "searchQuery": "search terms if looking for specific tasks, or null",
+              "searchQuery": "search terms to find existing task (for UPDATE_TASK, DELETE_TASK, MARK_COMPLETE), or null",
               "response": "friendly response confirming the action"
             }
             
             Extract REAL values from the user's message. If creating a task, the taskTitle must be the actual task name the user wants, not placeholder text.
+            For task modifications, searchQuery should contain the actual task name/keywords the user mentioned.
             """.formatted(userMessage);
     }
 
