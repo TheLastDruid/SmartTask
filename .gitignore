@@ -132,4 +132,4 @@ docker-compose-*.yml
 
 # AI Agent Instructions (internal development documentation)
 AI_AGENT_INSTRUCTIONS.md
- EMAIL_VERIFICATION_STATUS.md
+EMAIL_VERIFICATION_STATUS.md
