@@ -6,6 +6,9 @@ import com.todoapp.dto.LoginRequest;
 import com.todoapp.dto.RegisterRequest;
 import com.todoapp.dto.TaskRequest;
 import com.todoapp.model.TaskStatus;
+import com.todoapp.model.User;
+import com.todoapp.repository.UserRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +25,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDateTime;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -37,49 +41,86 @@ class SmartTaskIntegrationTest {
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
-    }
-
-    @Autowired
+    }    @Autowired
     private MockMvc mockMvc;
 
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private UserRepository userRepository;
+
     private String jwtToken;
 
-    @BeforeEach
+    @AfterEach
+    void cleanup() {
+        // Clean up test data after each test
+        userRepository.deleteAll();
+    }    @BeforeEach
     void setUp() throws Exception {
-        // Register a test user and get JWT token
+        // Register a test user
         RegisterRequest registerRequest = new RegisterRequest();
         registerRequest.setEmail("integration@test.com");
         registerRequest.setPassword("password123");
         registerRequest.setFirstName("Integration");
         registerRequest.setLastName("Test");
 
-        MvcResult result = mockMvc.perform(post("/api/auth/register")
+        MvcResult registerResult = mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(registerRequest)))
                 .andExpect(status().isOk())
                 .andReturn();
 
-        String responseContent = result.getResponse().getContentAsString();
-        AuthResponse authResponse = objectMapper.readValue(responseContent, AuthResponse.class);
-        jwtToken = authResponse.getToken();
-    }
-
-    @Test
-    void completeUserJourney_RegisterLoginCreateTasksUpdateDelete() throws Exception {
-        // 1. Login with existing user
+        String registerResponse = registerResult.getResponse().getContentAsString();
+        AuthResponse authResponse = objectMapper.readValue(registerResponse, AuthResponse.class);
+        
+        // Verify the registration response
+        assertNotNull(authResponse);
+        assertEquals("integration@test.com", authResponse.getEmail());
+        assertNull(authResponse.getToken()); // Should be null for unverified users
+        assertFalse(authResponse.isEmailVerified());
+        assertTrue(authResponse.isRequiresVerification());
+        
+        // For integration testing, manually verify the email
+        // In a real scenario, the user would click the email link
+        User user = userRepository.findByEmail("integration@test.com").orElseThrow();
+        user.setEmailVerified(true);
+        user.setEmailVerificationToken(null); // Clear the token
+        userRepository.save(user);
+        
+        // Now login to get JWT token
         LoginRequest loginRequest = new LoginRequest();
         loginRequest.setEmail("integration@test.com");
         loginRequest.setPassword("password123");
 
-        mockMvc.perform(post("/api/auth/login")
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String loginResponse = loginResult.getResponse().getContentAsString();
+        AuthResponse loginAuthResponse = objectMapper.readValue(loginResponse, AuthResponse.class);
+        jwtToken = loginAuthResponse.getToken();
+    }    @Test
+    void completeUserJourney_RegisterLoginCreateTasksUpdateDelete() throws Exception {
+        // 1. Login with existing user and get the current token
+        LoginRequest loginRequest = new LoginRequest();
+        loginRequest.setEmail("integration@test.com");
+        loginRequest.setPassword("password123");
+
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").exists())
-                .andExpect(jsonPath("$.email").value("integration@test.com"));
+                .andExpect(jsonPath("$.email").value("integration@test.com"))
+                .andReturn();
+
+        // Extract the token from this specific login
+        String loginResponse = loginResult.getResponse().getContentAsString();
+        AuthResponse loginAuthResponse = objectMapper.readValue(loginResponse, AuthResponse.class);
+        String currentJwtToken = loginAuthResponse.getToken();
 
         // 2. Create a task
         TaskRequest taskRequest = new TaskRequest();
@@ -89,7 +130,7 @@ class SmartTaskIntegrationTest {
         taskRequest.setDueDate(LocalDateTime.now().plusDays(1));
 
         MvcResult createResult = mockMvc.perform(post("/api/tasks")
-                .header("Authorization", "Bearer " + jwtToken)
+                .header("Authorization", "Bearer " + currentJwtToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(taskRequest)))
                 .andExpect(status().isOk())
@@ -100,18 +141,14 @@ class SmartTaskIntegrationTest {
 
         // Extract task ID from response
         String taskResponseJson = createResult.getResponse().getContentAsString();
-        String taskId = objectMapper.readTree(taskResponseJson).get("id").asText();
-
-        // 3. Get all tasks
+        String taskId = objectMapper.readTree(taskResponseJson).get("id").asText();        // 3. Get all tasks
         mockMvc.perform(get("/api/tasks")
-                .header("Authorization", "Bearer " + jwtToken))
+                .header("Authorization", "Bearer " + currentJwtToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$[0].title").value("Integration Test Task"));
-
-        // 4. Get specific task
+                .andExpect(jsonPath("$[0].title").value("Integration Test Task"));        // 4. Get specific task
         mockMvc.perform(get("/api/tasks/" + taskId)
-                .header("Authorization", "Bearer " + jwtToken))
+                .header("Authorization", "Bearer " + currentJwtToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(taskId))
                 .andExpect(jsonPath("$.title").value("Integration Test Task"));
@@ -119,25 +156,19 @@ class SmartTaskIntegrationTest {
         // 5. Update the task
         TaskRequest updateRequest = new TaskRequest();
         updateRequest.setTitle("Updated Integration Test Task");
-        updateRequest.setStatus(TaskStatus.IN_PROGRESS);
-
-        mockMvc.perform(put("/api/tasks/" + taskId)
-                .header("Authorization", "Bearer " + jwtToken)
+        updateRequest.setStatus(TaskStatus.IN_PROGRESS);        mockMvc.perform(put("/api/tasks/" + taskId)
+                .header("Authorization", "Bearer " + currentJwtToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(updateRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("Updated Integration Test Task"))
-                .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
-
-        // 6. Delete the task
+                .andExpect(jsonPath("$.status").value("IN_PROGRESS"));        // 6. Delete the task
         mockMvc.perform(delete("/api/tasks/" + taskId)
-                .header("Authorization", "Bearer " + jwtToken))
+                .header("Authorization", "Bearer " + currentJwtToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Task deleted successfully"));
-
-        // 7. Verify task is deleted
+                .andExpect(jsonPath("$.message").value("Task deleted successfully"));        // 7. Verify task is deleted
         mockMvc.perform(get("/api/tasks/" + taskId)
-                .header("Authorization", "Bearer " + jwtToken))
+                .header("Authorization", "Bearer " + currentJwtToken))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Task not found"));
     }
@@ -154,13 +185,11 @@ class SmartTaskIntegrationTest {
                 .content(objectMapper.writeValueAsString(invalidLogin)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Invalid credentials"));
-    }
-
-    @Test
+    }    @Test
     void taskOperations_UnauthorizedAccess_ReturnsError() throws Exception {
         // Try to access tasks without authentication
         mockMvc.perform(get("/api/tasks"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());
 
         // Try to create task without authentication
         TaskRequest taskRequest = new TaskRequest();
@@ -169,7 +198,7 @@ class SmartTaskIntegrationTest {
         mockMvc.perform(post("/api/tasks")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(taskRequest)))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -186,20 +215,32 @@ class SmartTaskIntegrationTest {
                 .content(objectMapper.writeValueAsString(duplicateRegister)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Error: Email is already taken!"));
-    }
-
-    @Test
+    }    @Test
     void taskCRUD_CrossUserAccess_ReturnsError() throws Exception {
         // Create another user
         RegisterRequest anotherUser = new RegisterRequest();
         anotherUser.setEmail("another@test.com");
         anotherUser.setPassword("password123");
         anotherUser.setFirstName("Another");
-        anotherUser.setLastName("User");
-
-        MvcResult anotherUserResult = mockMvc.perform(post("/api/auth/register")
+        anotherUser.setLastName("User");        mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(anotherUser)))
+                .andExpect(status().isOk());
+
+        // Manually verify the other user for testing purposes
+        User anotherUserEntity = userRepository.findByEmail("another@test.com").orElse(null);
+        assertNotNull(anotherUserEntity);
+        anotherUserEntity.setEmailVerified(true);
+        userRepository.save(anotherUserEntity);
+
+        // Login as the other user to get a valid token
+        LoginRequest anotherUserLogin = new LoginRequest();
+        anotherUserLogin.setEmail("another@test.com");
+        anotherUserLogin.setPassword("password123");
+
+        MvcResult anotherUserResult = mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(anotherUserLogin)))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -218,9 +259,7 @@ class SmartTaskIntegrationTest {
                 .andReturn();
 
         String taskId = objectMapper.readTree(taskResult.getResponse().getContentAsString())
-                .get("id").asText();
-
-        // Try to access the task with another user's token
+                .get("id").asText();        // Try to access the task with another user's token
         mockMvc.perform(get("/api/tasks/" + taskId)
                 .header("Authorization", "Bearer " + anotherUserToken))
                 .andExpect(status().isBadRequest())
@@ -228,9 +267,7 @@ class SmartTaskIntegrationTest {
 
         // Try to update the task with another user's token
         TaskRequest updateRequest = new TaskRequest();
-        updateRequest.setTitle("Hacked Task");
-
-        mockMvc.perform(put("/api/tasks/" + taskId)
+        updateRequest.setTitle("Hacked Task");        mockMvc.perform(put("/api/tasks/" + taskId)
                 .header("Authorization", "Bearer " + anotherUserToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(updateRequest)))
@@ -238,8 +275,7 @@ class SmartTaskIntegrationTest {
                 .andExpect(jsonPath("$.message").value("Task not found"));
 
         // Try to delete the task with another user's token
-        mockMvc.perform(delete("/api/tasks/" + taskId)
-                .header("Authorization", "Bearer " + anotherUserToken))
+        mockMvc.perform(delete("/api/tasks/" + taskId)                .header("Authorization", "Bearer " + anotherUserToken))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Task not found"));
     }

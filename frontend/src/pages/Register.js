@@ -95,23 +95,39 @@ const Register = () => {
     }
 
     return newErrors;
-  };
-  const handleSubmit = async (e) => {
+  };  const handleSubmit = async (e) => {
     e.preventDefault();
     
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
-    }    setIsLoading(true);
-    setErrors({});    try {
+    }
+
+    setIsLoading(true);
+    setErrors({});
+
+    try {
       const { confirmPassword, ...registerData } = formData;
       console.log('Submitting registration data:', registerData);
       
       const response = await authService.register(registerData);
       console.log('Registration response:', response);
-        // Extract user data and token from response.data
+      
       const responseData = response.data;
+      
+      // Check if email verification is required
+      if (responseData.requiresVerification || responseData.emailVerified === false) {
+        // Registration successful but requires email verification
+        toast.success('Account created successfully! Please check your email to verify your account.');
+        // Redirect to email verification required page
+        navigate('/email-verification-required', { 
+          state: { email: registerData.email }
+        });
+        return;
+      }
+      
+      // If we get here, the user is verified (backward compatibility)
       const userData = {
         id: responseData.id,
         email: responseData.email,

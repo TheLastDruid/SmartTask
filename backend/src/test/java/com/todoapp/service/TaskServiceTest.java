@@ -22,19 +22,18 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class TaskServiceTest {
+class TaskServiceTest {    @Mock
+    private TaskRepository taskRepository;
 
     @Mock
-    private TaskRepository taskRepository;
+    private RedisPublisher redisPublisher;
 
     @InjectMocks
     private TaskService taskService;
 
     private Task testTask;
     private TaskRequest taskRequest;
-    private String userId = "user123";
-
-    @BeforeEach
+    private String userId = "user123";    @BeforeEach
     void setUp() {
         testTask = new Task();
         testTask.setId("task123");
@@ -49,7 +48,11 @@ class TaskServiceTest {
         taskRequest.setTitle("New Task");
         taskRequest.setDescription("New Description");
         taskRequest.setStatus(TaskStatus.TODO);
-        taskRequest.setDueDate(LocalDateTime.now().plusDays(1));
+        taskRequest.setDueDate(LocalDateTime.now().plusDays(1));        // Mock RedisPublisher methods - lenient to avoid unnecessary stubbing errors
+        lenient().doNothing().when(redisPublisher).invalidateUserTasksCache(anyString());
+        lenient().doNothing().when(redisPublisher).publishTaskUpdate(anyString(), anyString(), anyString(), any());
+        lenient().doNothing().when(redisPublisher).cacheUserTasks(anyString(), any());
+        lenient().when(redisPublisher.getCachedUserTasks(anyString())).thenReturn(null); // No cached data by default
     }
 
     @Test

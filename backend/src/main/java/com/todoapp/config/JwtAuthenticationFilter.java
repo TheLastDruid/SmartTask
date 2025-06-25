@@ -22,16 +22,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private JwtUtils jwtUtils;
 
     @Autowired
-    private UserDetailsService userDetailsService;    @Override
+    private UserDetailsService userDetailsService;
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, 
                                   FilterChain filterChain) throws ServletException, IOException {
         try {
             String jwt = parseJwt(request);
+            
             if (jwt != null && !jwt.isEmpty()) {
                 try {
                     String email = jwtUtils.getEmailFromJwtToken(jwt);
+                    
                     if (email != null && !email.isEmpty()) {
                         UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+                        
                         if (jwtUtils.validateJwtToken(jwt, email)) {
                             UsernamePasswordAuthenticationToken authentication = 
                                 new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
@@ -39,14 +44,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                             SecurityContextHolder.getContext().setAuthentication(authentication);
                         }
-                    }                } catch (Exception tokenException) {
-                    logger.warn("Invalid JWT token", tokenException);
-                    // Clear any existing authentication
+                    }
+                } catch (Exception tokenException) {
                     SecurityContextHolder.clearContext();
                 }
             }
         } catch (Exception e) {
-            logger.error("Cannot set user authentication", e);
             SecurityContextHolder.clearContext();
         }
 

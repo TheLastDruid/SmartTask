@@ -55,6 +55,8 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))            .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/api/auth/register").permitAll()
                 .requestMatchers("/api/auth/login").permitAll()
+                .requestMatchers("/api/auth/verify-email").permitAll()  // Email verification endpoint
+                .requestMatchers("/api/auth/resend-verification").permitAll()  // Resend verification endpoint
                 .requestMatchers("/api/test-connection").permitAll()  // Test endpoint
                 .requestMatchers("/api/test-publish-message").permitAll()  // Test Redis publish endpoint
                 .requestMatchers("/api/test-broadcast-message").permitAll()  // Test broadcast endpoint

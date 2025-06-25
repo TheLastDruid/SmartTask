@@ -54,20 +54,25 @@ const Login = () => {
     }
 
     return newErrors;
-  };
-  const handleSubmit = async (e) => {
+  };  const handleSubmit = async (e) => {
     e.preventDefault();
     
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
-    }    setIsLoading(true);
+    }
+
+    setIsLoading(true);
     setErrors({});
-      try {
+    
+    try {
       // Call the API login function
-      const response = await authService.login(formData.email, formData.password);      console.log('Login response:', response);
-        // Extract user data and token from response.data
+      const response = await authService.login(formData.email, formData.password);
+
+      console.log('Login response:', response);
+      
+      // Extract user data and token from response.data
       const responseData = response.data;
       const userData = {
         id: responseData.id,
@@ -85,15 +90,26 @@ const Login = () => {
       console.error('Login error:', error);
       
       let message = 'Login failed. Please try again.';
+      let requiresVerification = false;
       
       if (error.response?.data?.message) {
         message = error.response.data.message;
+        requiresVerification = error.response.data.requiresVerification === 'true';
       } else if (error.response?.status === 401) {
         message = 'Invalid email or password';
       } else if (error.response?.status === 400) {
         message = 'Please check your email and password';
       } else if (!error.response) {
         message = 'Unable to connect to server. Please check your internet connection.';
+      }
+      
+      // If email verification is required, show specific message and redirect
+      if (requiresVerification || message.includes('verify your email')) {
+        toast.error('Please verify your email address before logging in.');
+        navigate('/email-verification-required', { 
+          state: { email: formData.email }
+        });
+        return;
       }
       
       toast.error(message);

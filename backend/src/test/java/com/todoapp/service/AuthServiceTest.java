@@ -35,10 +35,11 @@ class AuthServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private PasswordEncoder encoder;
+    private PasswordEncoder encoder;    @Mock
+    private JwtUtils jwtUtils;
 
     @Mock
-    private JwtUtils jwtUtils;
+    private EmailService emailService;
 
     @Mock
     private Authentication authentication;
@@ -51,13 +52,13 @@ class AuthServiceTest {
     private RegisterRequest registerRequest;
 
     @BeforeEach
-    void setUp() {
-        testUser = new User();
+    void setUp() {        testUser = new User();
         testUser.setId("user123");
         testUser.setEmail("test@example.com");
         testUser.setPassword("encodedPassword");
         testUser.setFirstName("John");
         testUser.setLastName("Doe");
+        testUser.setEmailVerified(true); // Make sure test user is verified
 
         loginRequest = new LoginRequest();
         loginRequest.setEmail("test@example.com");
@@ -93,11 +94,10 @@ class AuthServiceTest {
         verify(authenticationManager, times(1)).authenticate(any(UsernamePasswordAuthenticationToken.class));
         verify(jwtUtils, times(1)).generateJwtToken("test@example.com");
         verify(userRepository, times(1)).findByEmail("test@example.com");
-    }
-
-    @Test
+    }    @Test
     void authenticateUser_InvalidCredentials_ThrowsException() {
         // Given
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenThrow(new BadCredentialsException("Invalid credentials"));
 
@@ -106,16 +106,14 @@ class AuthServiceTest {
             authService.authenticateUser(loginRequest);
         });
 
+        verify(userRepository, times(1)).findByEmail("test@example.com");
         verify(authenticationManager, times(1)).authenticate(any(UsernamePasswordAuthenticationToken.class));
         verify(jwtUtils, never()).generateJwtToken(anyString());
-        verify(userRepository, never()).findByEmail(anyString());
     }
 
     @Test
     void authenticateUser_UserNotFound_ThrowsException() {
         // Given
-        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
-                .thenReturn(authentication);
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.empty());
 
         // When & Then
@@ -125,37 +123,35 @@ class AuthServiceTest {
 
         assertEquals("User not found", exception.getMessage());
 
-        verify(authenticationManager, times(1)).authenticate(any(UsernamePasswordAuthenticationToken.class));
         verify(userRepository, times(1)).findByEmail("test@example.com");
-    }
-
-    @Test
+        verify(authenticationManager, never()).authenticate(any(UsernamePasswordAuthenticationToken.class));
+        verify(jwtUtils, never()).generateJwtToken(anyString());
+    }@Test
     void registerUser_ValidRequest_ReturnsAuthResponse() {
         // Given
         String encodedPassword = "encodedPassword123";
-        String jwtToken = "jwt-token-456";
         User savedUser = new User("newuser@example.com", encodedPassword, "Jane", "Smith");
         savedUser.setId("newuser123");
-
-        when(userRepository.existsByEmail("newuser@example.com")).thenReturn(false);
+        savedUser.setEmailVerified(false); // New user not verified        when(userRepository.existsByEmail("newuser@example.com")).thenReturn(false);
         when(encoder.encode("password123")).thenReturn(encodedPassword);
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
-        when(jwtUtils.generateJwtToken("newuser@example.com")).thenReturn(jwtToken);
+        doNothing().when(emailService).sendVerificationEmail(anyString(), anyString(), anyString());
 
         // When
         AuthResponse result = authService.registerUser(registerRequest);
 
         // Then
         assertNotNull(result);
-        assertEquals(jwtToken, result.getToken());
+        assertNull(result.getToken()); // No token for unverified users
         assertEquals("newuser@example.com", result.getEmail());
         assertEquals("Jane", result.getFirstName());
         assertEquals("Smith", result.getLastName());
+        assertFalse(result.isEmailVerified()); // Should be false for new users
 
         verify(userRepository, times(1)).existsByEmail("newuser@example.com");
         verify(encoder, times(1)).encode("password123");
         verify(userRepository, times(1)).save(any(User.class));
-        verify(jwtUtils, times(1)).generateJwtToken("newuser@example.com");
+        verify(emailService, times(1)).sendVerificationEmail(anyString(), anyString(), anyString());
     }
 
     @Test

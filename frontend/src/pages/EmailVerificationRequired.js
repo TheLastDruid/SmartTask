@@ -1,12 +1,20 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { CheckSquare, Mail, Loader, ArrowLeft } from 'lucide-react';
 import { authService } from '../services/authService';
 
 const EmailVerificationRequired = () => {
-  const [email, setEmail] = useState('');
+  const location = useLocation();
+  const [email, setEmail] = useState(location.state?.email || '');
   const [isResending, setIsResending] = useState(false);
+
+  useEffect(() => {
+    // If email is passed through navigation state, set it
+    if (location.state?.email) {
+      setEmail(location.state.email);
+    }
+  }, [location.state]);
 
   const handleResendVerification = async (e) => {
     e.preventDefault();

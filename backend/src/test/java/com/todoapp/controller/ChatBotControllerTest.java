@@ -5,8 +5,11 @@ import com.todoapp.dto.ChatRequest;
 import com.todoapp.dto.ChatResponse;
 import com.todoapp.dto.TaskRequest;
 import com.todoapp.model.TaskStatus;
+import com.todoapp.model.User;
+import com.todoapp.repository.UserRepository;
 import com.todoapp.service.ChatBotService;
 import com.todoapp.service.FileProcessingService;
+import com.todoapp.service.GroqService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,6 +27,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -40,6 +44,12 @@ class ChatBotControllerTest {
     private FileProcessingService fileProcessingService;
 
     @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private GroqService groqService;
+
+    @Mock
     private SecurityContext securityContext;
 
     @Mock
@@ -54,12 +64,19 @@ class ChatBotControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(chatBotController).build();
-        objectMapper = new ObjectMapper();
-
-        // Setup security context
+        objectMapper = new ObjectMapper();        // Setup security context
         SecurityContextHolder.setContext(securityContext);
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-        when(authentication.getName()).thenReturn("test@example.com");
+        lenient().when(securityContext.getAuthentication()).thenReturn(authentication);
+        lenient().when(authentication.getName()).thenReturn("test@example.com");
+        
+        // Setup user repository mock
+        User testUser = new User();
+        testUser.setId("user123");
+        testUser.setEmail("test@example.com");
+        lenient().when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+        
+        // Setup GroqService for health check
+        lenient().when(groqService.isHealthy()).thenReturn(true);
     }
 
     @Test
@@ -69,9 +86,7 @@ class ChatBotControllerTest {
         chatRequest.setMessage("Create a task to buy groceries");
         chatRequest.setConversationId("conv123");
 
-        ChatResponse chatResponse = new ChatResponse("I'll help you create a task for buying groceries.", "conv123");
-
-        when(chatBotService.processMessage(any(ChatRequest.class), eq("test@example.com")))
+        ChatResponse chatResponse = new ChatResponse("I'll help you create a task for buying groceries.", "conv123");        when(chatBotService.processMessage(any(ChatRequest.class), eq("user123")))
                 .thenReturn(chatResponse);
 
         // When & Then
@@ -82,7 +97,7 @@ class ChatBotControllerTest {
                 .andExpect(jsonPath("$.message").value("I'll help you create a task for buying groceries."))
                 .andExpect(jsonPath("$.conversationId").value("conv123"));
 
-        verify(chatBotService, times(1)).processMessage(any(ChatRequest.class), eq("test@example.com"));
+        verify(chatBotService, times(1)).processMessage(any(ChatRequest.class), eq("user123"));
     }
 
     @Test
@@ -90,9 +105,7 @@ class ChatBotControllerTest {
         // Given
         ChatRequest chatRequest = new ChatRequest();
         chatRequest.setMessage("Test message");
-        chatRequest.setConversationId("conv123");
-
-        when(chatBotService.processMessage(any(ChatRequest.class), eq("test@example.com")))
+        chatRequest.setConversationId("conv123");        when(chatBotService.processMessage(any(ChatRequest.class), eq("user123")))
                 .thenThrow(new RuntimeException("Service error"));
 
         // When & Then
@@ -103,7 +116,7 @@ class ChatBotControllerTest {
                 .andExpect(jsonPath("$.message").value("Sorry, I encountered an error processing your request. Please try again."))
                 .andExpect(jsonPath("$.conversationId").value("conv123"));
 
-        verify(chatBotService, times(1)).processMessage(any(ChatRequest.class), eq("test@example.com"));
+        verify(chatBotService, times(1)).processMessage(any(ChatRequest.class), eq("user123"));
     }
 
     @Test
@@ -120,8 +133,7 @@ class ChatBotControllerTest {
         ChatResponse chatResponse = new ChatResponse("File processed successfully.", null);
 
         when(fileProcessingService.isSupportedFileType("test.txt")).thenReturn(true);
-        when(fileProcessingService.extractTextFromFile(any())).thenReturn(extractedText);
-        when(chatBotService.processFileUpload(eq(extractedText), eq("test@example.com")))
+        when(fileProcessingService.extractTextFromFile(any())).thenReturn(extractedText);        when(chatBotService.processFileUpload(eq(extractedText), eq("user123")))
                 .thenReturn(chatResponse);
 
         // When & Then
@@ -132,7 +144,7 @@ class ChatBotControllerTest {
 
         verify(fileProcessingService, times(1)).isSupportedFileType("test.txt");
         verify(fileProcessingService, times(1)).extractTextFromFile(any());
-        verify(chatBotService, times(1)).processFileUpload(eq(extractedText), eq("test@example.com"));
+        verify(chatBotService, times(1)).processFileUpload(eq(extractedText), eq("user123"));
     }
 
     @Test
@@ -219,9 +231,7 @@ class ChatBotControllerTest {
 
         List<TaskRequest> tasks = Arrays.asList(task1, task2);
 
-        ChatResponse chatResponse = new ChatResponse("Tasks created successfully!", null);
-
-        when(chatBotService.confirmTaskCreation(anyList(), eq("test@example.com")))
+        ChatResponse chatResponse = new ChatResponse("Tasks created successfully!", null);        when(chatBotService.confirmTaskCreation(anyList(), eq("user123")))
                 .thenReturn(chatResponse);
 
         // When & Then
@@ -231,7 +241,7 @@ class ChatBotControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Tasks created successfully!"));
 
-        verify(chatBotService, times(1)).confirmTaskCreation(anyList(), eq("test@example.com"));
+        verify(chatBotService, times(1)).confirmTaskCreation(anyList(), eq("user123"));
     }
 
     @Test
@@ -239,9 +249,7 @@ class ChatBotControllerTest {
         // Given
         TaskRequest task = new TaskRequest();
         task.setTitle("Task 1");
-        List<TaskRequest> tasks = Arrays.asList(task);
-
-        when(chatBotService.confirmTaskCreation(anyList(), eq("test@example.com")))
+        List<TaskRequest> tasks = Arrays.asList(task);        when(chatBotService.confirmTaskCreation(anyList(), eq("user123")))
                 .thenThrow(new RuntimeException("Database error"));
 
         // When & Then
@@ -251,15 +259,14 @@ class ChatBotControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Sorry, I couldn't add the tasks. Please try again."));
 
-        verify(chatBotService, times(1)).confirmTaskCreation(anyList(), eq("test@example.com"));
-    }
-
-    @Test
+        verify(chatBotService, times(1)).confirmTaskCreation(anyList(), eq("user123"));
+    }    @Test
     void healthCheck_ReturnsStatus() throws Exception {
         // When & Then
         mockMvc.perform(get("/api/chat/health"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ChatBot service is running"))
+                .andExpect(jsonPath("$.status").value("UP"))
+                .andExpect(jsonPath("$.service").value("ChatBot with Groq AI"))
                 .andExpect(jsonPath("$.timestamp").exists());
     }
 

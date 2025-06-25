@@ -11,18 +11,41 @@ const EmailVerification = () => {
   const [resendEmail, setResendEmail] = useState('');  const [isResending, setIsResending] = useState(false);
 
   const token = searchParams.get('token');
-
   const verifyEmail = useCallback(async () => {
     try {
-      await authService.verifyEmail(token);
-      setVerificationStatus('success');
-      setMessage('Your email has been verified successfully! You can now log in to your account.');
-      toast.success('Email verified successfully!');
+      const response = await authService.verifyEmail(token);
+      const data = response.data;
+      
+      // Handle different verification statuses
+      if (data.status === 'success') {
+        setVerificationStatus('success');
+        setMessage('Your email has been verified successfully! You can now log in to your account.');
+        toast.success('Email verified successfully!');
+      } else if (data.status === 'already_verified') {
+        setVerificationStatus('success');
+        setMessage('Your email is already verified! You can proceed to log in to your account.');
+        toast.success('Email already verified!');
+      } else {
+        // For any other success response without specific status
+        setVerificationStatus('success');
+        setMessage(data.message || 'Your email has been verified successfully! You can now log in to your account.');
+        toast.success('Email verified successfully!');
+      }
     } catch (error) {
       setVerificationStatus('error');
-      const errorMessage = error.response?.data?.message || 'Email verification failed. The link may be expired or invalid.';
-      setMessage(errorMessage);
-      toast.error(errorMessage);
+      const data = error.response?.data;
+      
+      // Handle specific error statuses with appropriate messages
+      if (data?.status === 'expired') {
+        setMessage('Your verification link has expired. Please request a new verification email below.');
+      } else if (data?.status === 'invalid') {
+        setMessage('Invalid verification link. If you\'ve already verified your email, you can proceed to log in.');
+      } else {
+        const errorMessage = data?.message || 'Email verification failed. The link may be expired or invalid.';
+        setMessage(errorMessage);
+      }
+      
+      toast.error('Verification failed');
     }
   }, [token]);
 
