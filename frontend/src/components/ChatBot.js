@@ -55,6 +55,8 @@ const ChatBot = ({ onTaskUpdate }) => {
         } catch (error) {
           Logger.error('Error saving conversation to localStorage:', error);
         }
+        // Scroll to bottom after loading conversation
+        setTimeout(() => scrollToBottom(true), 200);
         return;
       }
     } catch (error) {
@@ -72,6 +74,8 @@ const ChatBot = ({ onTaskUpdate }) => {
           timestamp: new Date(message.timestamp)
         }));
         setMessages(messagesWithDates);
+        // Scroll to bottom after loading from localStorage
+        setTimeout(() => scrollToBottom(true), 200);
       } catch (error) {
         Logger.error('Error loading saved conversation:', error);        // Initialize with welcome message if loading fails
         const welcomeMessage = {
@@ -86,6 +90,8 @@ const ChatBot = ({ onTaskUpdate }) => {
         } catch (error) {
           Logger.error('Error saving welcome message to localStorage:', error);
         }
+        // Scroll to bottom after showing welcome message
+        setTimeout(() => scrollToBottom(true), 200);
       }
     } else {
       Logger.debug('No saved conversation found, initializing');
@@ -101,6 +107,8 @@ const ChatBot = ({ onTaskUpdate }) => {
       } catch (error) {
         Logger.error('Error saving welcome message to localStorage:', error);
       }
+      // Scroll to bottom after showing welcome message
+      setTimeout(() => scrollToBottom(true), 200);
     }
   }, [user]);
 
@@ -125,13 +133,26 @@ const ChatBot = ({ onTaskUpdate }) => {
     }
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = (immediate = false) => {
+    if (immediate) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
+  // Scroll to bottom when messages change
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);  const addMessage = (type, content, additionalData = {}) => {
+  }, [messages]);
+
+  // Scroll to bottom when chat opens and after conversation loads
+  useEffect(() => {
+    if (isOpen && messages.length > 0) {
+      // Small delay to ensure rendering is complete
+      setTimeout(() => scrollToBottom(true), 100);
+    }
+  }, [isOpen, messages.length]);  const addMessage = (type, content, additionalData = {}) => {
     const newMessage = {
       id: uuidv4(),
       type,
@@ -290,10 +311,18 @@ const ChatBot = ({ onTaskUpdate }) => {
     if (isMinimized && !isOpen) {
       setIsMinimized(false);
     }
+    // When opening the chat, scroll to bottom after a short delay
+    if (!isOpen) {
+      setTimeout(() => scrollToBottom(true), 300);
+    }
   };
 
   const toggleMinimize = () => {
     setIsMinimized(!isMinimized);
+    // When expanding from minimized, scroll to bottom
+    if (isMinimized) {
+      setTimeout(() => scrollToBottom(true), 300);
+    }
   };
   const clearConversation = () => {
     if (window.confirm('Are you sure you want to clear the conversation? This cannot be undone.')) {

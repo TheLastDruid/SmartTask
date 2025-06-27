@@ -68,10 +68,6 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchTasks();
-    // Test notification
-    setTimeout(() => {
-      notificationService.info('Dashboard loaded - test notification');
-    }, 1000);
   }, [fetchTasks]);
   useEffect(() => {
     filterTasks();
