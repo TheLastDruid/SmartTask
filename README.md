@@ -50,6 +50,14 @@ SmartTask is a modern, full-stack task management application that combines trad
 - **WebSocket Client** for real-time updates
 - **Proper Error Handling** and user feedback
 
+### Mobile (React Native)
+- **Expo SDK 51+** with TypeScript
+- **React Navigation 6** for seamless navigation
+- **Axios** for API integration with the same backend
+- **WebSocket Client** for real-time synchronization
+- **AsyncStorage** for offline data persistence
+- **Modern UI** with gesture-based interactions
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -104,24 +112,20 @@ REACT_APP_API_URL=http://localhost:8080
 ```
 
 ### 4. Quick Setup Scripts
-For convenience, use our setup scripts:
+For convenience, use our setup scripts (Unix/Linux/macOS):
 
 **Setup Groq API:**
 ```bash
-# Windows
-.\setup_groq.ps1 YOUR_GROQ_API_KEY
-
-# Linux/Mac
 ./setup_groq.sh YOUR_GROQ_API_KEY
 ```
 
 **Setup Email (Optional):**
 ```bash
 # For TestMail.app (recommended)
-.\setup_email.ps1 testmail
+./setup_email.sh testmail
 
 # For Gmail
-.\setup_email.ps1 gmail
+./setup_email.sh gmail
 ```
 - Sends real emails to users
 
@@ -146,13 +150,29 @@ pnpm start
 
 **Option C: Quick Start Script**
 ```bash
-start.bat  # Windows
+# Use shell script for quick start
+./start.sh  # Unix/Linux/macOS
 ```
 
 ### 6. Access the Application
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8080
 - **MongoDB**: localhost:27017
+
+### 7. Mobile Application (Optional)
+For mobile access, check out the React Native app:
+```bash
+# Navigate to mobile directory
+cd mobile
+
+# Run setup script
+chmod +x setup-git.sh
+./setup-git.sh
+
+# Start development server
+npx expo start
+```
+See `mobile/README.md` for detailed mobile setup instructions.
 
 ## 🆕 What's New in v1.1
 
@@ -275,11 +295,11 @@ docker-compose -f docker-compose.infra.yml up
 
 To clean build artifacts and temporary files:
 ```bash
-# Windows
-cleanup.bat
-
-# Linux/Mac
+# Unix/Linux/macOS
 ./cleanup.sh
+
+# Manual cleanup if needed:
+# rm -rf frontend/node_modules backend/target frontend/build
 ```
 
 ## 🔧 Configuration
