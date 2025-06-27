@@ -10,6 +10,7 @@ public class Task {
     @Id
     private String id;
     
+    private Integer ticketNumber;
     private String title;
     private String description;
     private TaskStatus status;
@@ -40,6 +41,14 @@ public class Task {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public Integer getTicketNumber() {
+        return ticketNumber;
+    }
+
+    public void setTicketNumber(Integer ticketNumber) {
+        this.ticketNumber = ticketNumber;
     }
 
     public String getTitle() {

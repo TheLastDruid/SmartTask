@@ -37,16 +37,19 @@ function App() {
           {/* ChatBot is now handled within the dashboard component itself */}
           
           <ToastContainer
-            position="top-right"
-            autoClose={5000}
-            hideProgressBar={false}
-            newestOnTop={false}
+            position="top-center"
+            autoClose={2000}
+            hideProgressBar={true}
+            newestOnTop={true}
             closeOnClick
             rtl={false}
-            pauseOnFocusLoss
+            pauseOnFocusLoss={false}
             draggable
-            pauseOnHover
+            pauseOnHover={false}
             theme="light"
+            className="toast-container"
+            toastClassName="toast-notification"
+            limit={1}
           />
         </div>
       </Router>

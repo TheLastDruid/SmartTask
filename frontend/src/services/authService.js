@@ -15,6 +15,9 @@ api.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('Request interceptor: Added token to request', config.url);
+    } else {
+      console.log('Request interceptor: No token found for request', config.url);
     }
     return config;
   },
@@ -28,13 +31,14 @@ api.interceptors.response.use(
     console.log('Response interceptor error:', error);
     console.log('Error config URL:', error.config?.url);
     console.log('Error status:', error.response?.status);
+    console.log('Error response data:', error.response?.data);
     
     // Check for JWT signature errors
     const errorMessage = error.response?.data?.message || error.message || '';
     const isJwtSignatureError = errorMessage.includes('JWT signature does not match') || 
-                               errorMessage.includes('signature') ||
-                               error.response?.status === 403;
+                               errorMessage.includes('signature');
     
+    // Only handle 401 errors, not 403 (which might be permission-related, not auth-related)
     if (error.response?.status === 401 || isJwtSignatureError) {
       // Don't redirect if this is a login or register request
       const isAuthRequest = error.config?.url?.includes('/api/auth/login') || 
@@ -44,9 +48,17 @@ api.interceptors.response.use(
       const isVerifyRequest = error.config?.url?.includes('/api/auth/verify') ||
                               error.config?.url?.includes('/api/auth/me');
       
+      // Don't redirect for task operations unless it's clearly an expired token
+      const isTaskRequest = error.config?.url?.includes('/api/tasks');
+      
       if (!isAuthRequest && !isVerifyRequest) {
-        console.log('JWT authentication error, clearing invalid token and redirecting');
-        clearInvalidToken();
+        // For task requests, only clear token if it's clearly a JWT signature error
+        if (isTaskRequest && !isJwtSignatureError) {
+          console.log('401 error from task endpoint, but not JWT signature error - not clearing token');
+        } else {
+          console.log('JWT authentication error, clearing invalid token and redirecting');
+          clearInvalidToken();
+        }
       } else {
         console.log('401 error from auth endpoint, not redirecting');
       }

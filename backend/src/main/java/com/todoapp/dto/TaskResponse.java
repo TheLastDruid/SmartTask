@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 
 public class TaskResponse {
     private String id;
+    private Integer ticketNumber;
     private String title;
     private String description;
     private TaskStatus status;
@@ -16,6 +17,7 @@ public class TaskResponse {
 
     public TaskResponse() {}    public TaskResponse(Task task) {
         this.id = task.getId();
+        this.ticketNumber = task.getTicketNumber();
         this.title = task.getTitle();
         this.description = task.getDescription();
         this.status = task.getStatus();
@@ -32,6 +34,14 @@ public class TaskResponse {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public Integer getTicketNumber() {
+        return ticketNumber;
+    }
+
+    public void setTicketNumber(Integer ticketNumber) {
+        this.ticketNumber = ticketNumber;
     }
 
     public String getTitle() {

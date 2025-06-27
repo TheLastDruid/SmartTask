@@ -1,4 +1,4 @@
-# 🚀 SmartTask - AI-Powered Task Management
+# 🚀 SmartTask v1.1 - AI-Powered Task Management
 
 SmartTask is a modern, full-stack task management application that combines traditional task management with AI-powered assistance through Groq's LLM API. Create, manage, and get intelligent suggestions for your tasks through natural language chat.
 
@@ -6,31 +6,49 @@ SmartTask is a modern, full-stack task management application that combines trad
 
 ### Core Functionality
 - 📝 **Complete Task Management**: Create, read, update, and delete tasks
-- 👤 **User Authentication**: Secure JWT-based authentication system
-- 🎯 **Task Prioritization**: High, Medium, Low priority levels
-- 📅 **Due Date Management**: Set and track task deadlines
+- 👤 **User Authentication**: Secure JWT-based authentication with email verification
+- 🎯 **Task Prioritization**: High, Medium, Low priority levels with color coding
+- 📅 **Due Date Management**: Set and track task deadlines with overdue warnings
 - 📊 **Task Status Tracking**: TODO, IN_PROGRESS, COMPLETED statuses
+- 🎫 **Ticket Number System**: Unique sequential numbers for easy task reference
+- 🔍 **Smart Search & Filtering**: Filter by status, priority, and search by title/description
 
 ### AI-Powered Features
 - 🤖 **Smart Chat Assistant**: Natural language task creation and management
 - 🧠 **Groq LLM Integration**: Cloud-based AI for intelligent task processing
 - 📄 **File Upload Support**: Extract tasks from documents (.txt, .pdf, .docx)
 - 💡 **Intelligent Suggestions**: AI-powered task recommendations
+- 🎯 **Ticket Reference**: Reference tasks by number in chat (e.g., "update task #123")
+
+### Real-Time Features
+- 🔄 **WebSocket Integration**: Real-time task updates across browser tabs
+- 📱 **Live Notifications**: Instant feedback for all task operations
+- 🔗 **Cross-Tab Sync**: Changes sync automatically across multiple tabs
+
+### User Experience
+- 🎨 **Modern UI**: Clean, responsive design with Tailwind CSS
+- ♿ **Accessibility**: Color-coded priorities, clear visual hierarchy
+- 🖱️ **Intuitive Interactions**: Double-click to edit, drag-and-drop friendly
+- 📱 **Mobile Responsive**: Works seamlessly on all device sizes
 
 ## 🏗️ Architecture
 
 ### Backend (Spring Boot)
 - **Java 17** with Spring Boot 3.2.0
-- **MongoDB** for data persistence
+- **MongoDB** for data persistence with atomic operations
 - **JWT Authentication** with Spring Security
 - **Groq API Integration** for AI capabilities
-- **RESTful APIs** for frontend communication
+- **WebSocket Support** for real-time updates
+- **SLF4J Logging** for production-ready logging
+- **Environment Variable Configuration** for security
 
 ### Frontend (React)
 - **React 18** with modern hooks and context
 - **Tailwind CSS** for responsive styling
-- **Axios** for API communication
-- **JWT Token Management** for authentication
+- **Unified Notification System** with deduplication
+- **JWT Token Management** with automatic refresh
+- **WebSocket Client** for real-time updates
+- **Proper Error Handling** and user feedback
 
 ## 🚀 Quick Start
 
@@ -52,42 +70,82 @@ cd SmartTask
 npm install -g pnpm
 ```
 
-### 3. Setup Groq API
+### 3. Environment Setup
+Create a `.env` file in the root directory with your configuration:
+
 ```bash
-# For Windows
+# Groq AI Configuration
+GROQ_API_KEY=your_groq_api_key_here
+
+# Database Configuration
+MONGO_URI=mongodb://localhost:27017/smarttask
+
+# JWT Configuration
+JWT_SECRET=your_jwt_secret_here
+JWT_EXPIRATION=86400000
+
+# Email Configuration (choose one)
+# Option A: TestMail.app (recommended for development)
+SMTP_HOST=smtp.testmail.app
+SMTP_PORT=587
+SMTP_USERNAME=your_testmail_namespace
+SMTP_PASSWORD=your_testmail_password
+EMAIL_FROM=test@your_namespace.testmail.app
+
+# Option B: Gmail SMTP (for production)
+# SMTP_HOST=smtp.gmail.com
+# SMTP_PORT=587
+# SMTP_USERNAME=your_gmail@gmail.com
+# SMTP_PASSWORD=your_app_password
+# EMAIL_FROM=your_gmail@gmail.com
+
+# Frontend Configuration
+REACT_APP_API_URL=http://localhost:8080
+```
+
+### 4. Quick Setup Scripts
+For convenience, use our setup scripts:
+
+**Setup Groq API:**
+```bash
+# Windows
 .\setup_groq.ps1 YOUR_GROQ_API_KEY
 
-# For Linux/Mac
+# Linux/Mac
 ./setup_groq.sh YOUR_GROQ_API_KEY
 ```
 
-### 4. Setup Email Testing (Optional)
-Choose one of these options for email verification:
-
-**Option A: TestMail.app (Recommended for Development)**
+**Setup Email (Optional):**
 ```bash
-# Setup testmail.app for email testing
-.\setup_testmail.ps1
-```
-- No real email required
-- Perfect for testing and CI/CD
-- Free tier: 100 emails/month
-- Sign up at: https://testmail.app/signup/
+# For TestMail.app (recommended)
+.\setup_email.ps1 testmail
 
-**Option B: Gmail SMTP (Traditional)**
-```bash
-# Setup Gmail SMTP for real emails
-.\setup_email.ps1
+# For Gmail
+.\setup_email.ps1 gmail
 ```
-- Requires Gmail account with App Password
 - Sends real emails to users
 
 ### 5. Start the Application
-```bash
-# Using Docker (Recommended)
-docker-compose up --build
 
-# Or use the convenience script
+**Option A: Docker (Recommended)**
+```bash
+docker-compose up --build
+```
+
+**Option B: Development Mode**
+```bash
+# Start Backend (Terminal 1)
+cd backend
+mvn spring-boot:run
+
+# Start Frontend (Terminal 2)  
+cd frontend
+pnpm install
+pnpm start
+```
+
+**Option C: Quick Start Script**
+```bash
 start.bat  # Windows
 ```
 
@@ -96,10 +154,57 @@ start.bat  # Windows
 - **Backend API**: http://localhost:8080
 - **MongoDB**: localhost:27017
 
-### 7. Login
-Default test credentials:
-- **Email**: test@test.com
-- **Password**: investor
+## 🆕 What's New in v1.1
+
+### Ticket Number System
+- Every task gets a unique ticket number (#1, #2, etc.)
+- Reference tasks easily in chat: "update task #123 to high priority"
+- Ticket numbers displayed as badges on task cards
+
+### Enhanced User Experience
+- **Improved Accessibility**: Better color contrast and visual cues
+- **Double-Click Editing**: Double-click any task card to edit instantly
+- **Smart Notifications**: Unified notification system with deduplication
+- **Visual Priority Indicators**: Color-coded priority levels throughout the UI
+- **Overdue Task Warnings**: Clear visual indicators for overdue tasks
+
+### Real-Time Improvements
+- **WebSocket Debugging Tools**: Built-in debugger for real-time connections
+- **Cross-Tab Synchronization**: Changes sync instantly across browser tabs
+- **Optimized Notifications**: Reduced notification clutter with smart deduplication
+
+### Technical Improvements
+- **Production-Ready Logging**: Replaced all console output with SLF4J logging
+- **Environment Configuration**: All sensitive data moved to environment variables
+- **Enhanced Error Handling**: Better error messages and user feedback
+- **Code Quality**: Unified logging, consistent code style, improved maintainability
+
+## 💬 Chat Commands
+
+The AI assistant supports natural language commands:
+
+### Task Management
+```
+"Create a task to buy groceries with high priority"
+"Update task #123 to completed"
+"Delete task #456"
+"Mark task #789 as in progress"
+"Set task #123 due date to tomorrow"
+```
+
+### Bulk Operations
+```
+"Mark all my tasks as complete"
+"Show me all high priority tasks"
+"List overdue tasks"
+```
+
+### File Processing
+```
+Upload a document and say:
+"Extract tasks from this file"
+"Create tasks from this document"
+```
 
 ## 📋 API Endpoints
 

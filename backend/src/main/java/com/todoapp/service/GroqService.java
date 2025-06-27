@@ -135,6 +135,11 @@ public class GroqService {
             
             IMPORTANT: Extract ACTUAL information from the user's message. Do NOT use placeholder text.
             
+            TASK IDENTIFICATION:
+            - Tasks can be identified by their title/name OR by their ticket number (e.g., "#123", "task 123", "ticket 123")
+            - If user mentions a number like "#123" or "task 123", use that number in searchQuery
+            - Examples: "update task #123", "mark ticket 456 complete", "delete task 789"
+            
             For dates:
             - "tomorrow" = %s
             - "next Monday" = the next upcoming Monday after today
@@ -148,9 +153,12 @@ public class GroqService {
             - "Add task Study Math with Sarah tomorrow at 3pm high priority" → taskTitle: "Study Math with Sarah", taskDescription: "Study session with Sarah", dueDate: "%s", priority: "HIGH", action: "CREATE_TASK"
             - "Remind me to fix the code next Monday" → taskTitle: "Fix the code", taskDescription: "Fix the code in smart task application", dueDate: "[calculate next Monday from %s]", priority: "HIGH", action: "CREATE_TASK"
             - "Update task buy groceries to high priority" → searchQuery: "buy groceries", priority: "HIGH", action: "UPDATE_TASK"
+            - "Update task #123 to high priority" → searchQuery: "123", priority: "HIGH", action: "UPDATE_TASK"
             - "Change the due date of math homework to tomorrow" → searchQuery: "math homework", dueDate: "%s", action: "UPDATE_TASK"
             - "Mark buy groceries as complete" → searchQuery: "buy groceries", action: "MARK_COMPLETE"
+            - "Mark task #456 as complete" → searchQuery: "456", action: "MARK_COMPLETE"
             - "Delete the task study math" → searchQuery: "study math", action: "DELETE_TASK"
+            - "Delete ticket 789" → searchQuery: "789", action: "DELETE_TASK"
             - "Mark all my tasks as done" → action: "BULK_MARK_COMPLETE"
             - "Update all tasks to done" → action: "BULK_MARK_COMPLETE"
             - "Complete all my tasks" → action: "BULK_MARK_COMPLETE"
@@ -160,8 +168,9 @@ public class GroqService {
             
             For UPDATE_TASK, DELETE_TASK, and MARK_COMPLETE actions:
             - Use searchQuery to identify which task the user is referring to
+            - If user mentions a ticket number (like #123, task 123, ticket 456), extract just the number for searchQuery
             - Extract any new values they want to change (title, description, priority, dueDate)
-            - searchQuery should contain the task name/keywords the user mentioned
+            - searchQuery should contain the task name/keywords OR ticket number the user mentioned
             
             Possible actions:
             1. CREATE_TASK - User wants to add a new task

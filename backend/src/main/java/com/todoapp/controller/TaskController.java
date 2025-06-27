@@ -94,6 +94,19 @@ public class TaskController {
         }
     }
 
+    @GetMapping("/ticket/{ticketNumber}")
+    public ResponseEntity<?> getTaskByTicketNumber(@PathVariable Integer ticketNumber) {
+        try {
+            String userId = getCurrentUserId();
+            TaskResponse task = taskService.getTaskByTicketNumber(ticketNumber, userId);
+            return ResponseEntity.ok(task);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
     // Test endpoint to verify Redis/WebSocket integration
     @PostMapping("/test-redis")
     public ResponseEntity<Map<String, String>> testRedisIntegration() {
