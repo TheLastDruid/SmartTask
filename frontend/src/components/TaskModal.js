@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Save, Calendar, Type, FileText, Flag } from 'lucide-react';
+import Logger from '../utils/logger';
 
 const TaskModal = ({ isOpen, onClose, onSubmit, task, isEditing }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     status: 'TODO',
+    priority: 'MEDIUM',
     dueDate: '',
   });
 
@@ -14,11 +16,60 @@ const TaskModal = ({ isOpen, onClose, onSubmit, task, isEditing }) => {
 
   useEffect(() => {
     if (isOpen) {
+      // Helper function to safely format date for input field
+      const formatDateForInput = (dateValue) => {
+        if (!dateValue) return '';
+        
+        try {
+          // If it's already a string, try to parse it
+          if (typeof dateValue === 'string') {
+            const date = new Date(dateValue);
+            if (!isNaN(date.getTime())) {
+              return date.toISOString().split('T')[0];
+            }
+            return '';
+          }
+          
+          // If it's an array (LocalDateTime serialized), create date from it
+          if (Array.isArray(dateValue) && dateValue.length >= 3) {
+            const [year, month, day] = dateValue;
+            const date = new Date(year, month - 1, day); // month is 0-indexed in JS
+            if (!isNaN(date.getTime())) {
+              return date.toISOString().split('T')[0];
+            }
+            return '';
+          }
+          
+          // If it's a Date object
+          if (dateValue instanceof Date) {
+            if (!isNaN(dateValue.getTime())) {
+              return dateValue.toISOString().split('T')[0];
+            }
+            return '';
+          }
+          
+          // If it's an object with date properties
+          if (typeof dateValue === 'object' && dateValue.year) {
+            const date = new Date(dateValue.year, (dateValue.month || 1) - 1, dateValue.day || 1);
+            if (!isNaN(date.getTime())) {
+              return date.toISOString().split('T')[0];
+            }
+            return '';
+          }
+          
+          return '';
+        } catch (error) {
+          Logger.warn('Error formatting date for input:', error, dateValue);
+          return '';
+        }
+      };
+
       setFormData({
         title: task?.title || '',
         description: task?.description || '',
         status: task?.status || 'TODO',
-        dueDate: task?.dueDate ? task.dueDate.split('T')[0] : '',
+        priority: task?.priority || 'MEDIUM',
+        dueDate: formatDateForInput(task?.dueDate),
       });
       setErrors({});
       setIsSubmitting(false);
@@ -76,7 +127,7 @@ const TaskModal = ({ isOpen, onClose, onSubmit, task, isEditing }) => {
       await onSubmit(taskData);
       handleClose();
     } catch (error) {
-      console.error('Error submitting task:', error);
+      Logger.error('Error submitting task:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -87,6 +138,7 @@ const TaskModal = ({ isOpen, onClose, onSubmit, task, isEditing }) => {
       title: '',
       description: '',
       status: 'TODO',
+      priority: 'MEDIUM',
       dueDate: '',
     });
     setErrors({});
@@ -192,8 +244,8 @@ const TaskModal = ({ isOpen, onClose, onSubmit, task, isEditing }) => {
             </p>
           </div>
 
-          {/* Status and Due Date Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Status, Priority, and Due Date Row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Status Field */}
             <div>
               <label htmlFor="status" className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
@@ -211,6 +263,26 @@ const TaskModal = ({ isOpen, onClose, onSubmit, task, isEditing }) => {
                 <option value="TODO">To Do</option>
                 <option value="IN_PROGRESS">In Progress</option>
                 <option value="DONE">Completed</option>
+              </select>
+            </div>
+
+            {/* Priority Field */}
+            <div>
+              <label htmlFor="priority" className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+                <Flag className="h-4 w-4" />
+                <span>Priority</span>
+              </label>
+              <select
+                id="priority"
+                name="priority"
+                value={formData.priority}
+                onChange={handleChange}
+                disabled={isSubmitting}
+                className="input-field"
+              >
+                <option value="LOW">🟢 Low</option>
+                <option value="MEDIUM">🟡 Medium</option>
+                <option value="HIGH">🔴 High</option>
               </select>
             </div>
 

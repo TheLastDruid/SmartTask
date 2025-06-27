@@ -16,6 +16,7 @@ import { toast } from 'react-toastify';
 import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from '../context/AuthContext';
 import chatService from '../services/chatService';
+import Logger from '../utils/logger';
 
 const ChatBot = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -32,13 +33,13 @@ const ChatBot = () => {
   const loadConversationHistory = useCallback(async (convId) => {
     if (!user || !convId) return;
     
-    console.log('DEBUG: Loading conversation history for:', convId);
+    Logger.debug('Loading conversation history for:', convId);
     
     try {
       // Try to load from backend first
       const conversation = await chatService.getMainConversation();
       if (conversation && conversation.messages && conversation.messages.length > 0) {
-        console.log('DEBUG: Loaded from backend:', conversation.messages.length, 'messages');
+        Logger.debug('Loaded from backend:', conversation.messages.length, 'messages');
         const backendMessages = conversation.messages.map(msg => ({
           id: msg.id || uuidv4(),
           type: msg.role === 'user' ? 'user' : 'bot',
@@ -52,19 +53,19 @@ const ChatBot = () => {
         try {
           localStorage.setItem(`chatbot-conversation-${convId}`, JSON.stringify(backendMessages));
         } catch (error) {
-          console.error('Error saving conversation to localStorage:', error);
+          Logger.error('Error saving conversation to localStorage:', error);
         }
         return;
       }
     } catch (error) {
-      console.error('Error loading conversation from backend:', error);
+      Logger.error('Error loading conversation from backend:', error);
     }
       // Fallback to localStorage if backend fails or no conversation exists
     const savedConversation = localStorage.getItem(`chatbot-conversation-${convId}`);
     if (savedConversation) {
       try {
         const parsedMessages = JSON.parse(savedConversation);
-        console.log('DEBUG: Loaded from localStorage:', parsedMessages.length, 'messages');
+        Logger.debug('Loaded from localStorage:', parsedMessages.length, 'messages');
         // Convert timestamp strings back to Date objects
         const messagesWithDates = parsedMessages.map(message => ({
           ...message,
@@ -72,7 +73,7 @@ const ChatBot = () => {
         }));
         setMessages(messagesWithDates);
       } catch (error) {
-        console.error('Error loading saved conversation:', error);        // Initialize with welcome message if loading fails
+        Logger.error('Error loading saved conversation:', error);        // Initialize with welcome message if loading fails
         const welcomeMessage = {
           id: uuidv4(),
           type: 'bot',
@@ -83,11 +84,11 @@ const ChatBot = () => {
         try {
           localStorage.setItem(`chatbot-conversation-${convId}`, JSON.stringify([welcomeMessage]));
         } catch (error) {
-          console.error('Error saving welcome message to localStorage:', error);
+          Logger.error('Error saving welcome message to localStorage:', error);
         }
       }
     } else {
-      console.log('DEBUG: No saved conversation found, initializing');
+      Logger.debug('No saved conversation found, initializing');
       const welcomeMessage = {
         id: uuidv4(),
         type: 'bot',

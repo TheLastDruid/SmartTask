@@ -8,55 +8,57 @@ import {
   Calendar,
   MoreVertical
 } from 'lucide-react';
+import Logger from '../utils/logger';
 
 const TaskCard = ({ task, onEdit, onDelete, onStatusChange }) => {
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const getStatusConfig = (status) => {
-    switch (status) {
-      case 'TODO':
+  const getPriorityConfig = (priority) => {
+    switch (priority?.toUpperCase()) {
+      case 'HIGH':
         return {
-          color: 'bg-gray-100 text-gray-700 border-gray-200',
-          icon: Circle,
-          iconColor: 'text-gray-500',
-          bgColor: 'bg-gray-50'
+          color: 'bg-red-100 text-red-700 border-red-200',
+          label: 'High Priority',
+          icon: '🔴'
         };
-      case 'IN_PROGRESS':
+      case 'MEDIUM':
         return {
-          color: 'bg-blue-100 text-blue-700 border-blue-200',
-          icon: Clock,
-          iconColor: 'text-blue-500',
-          bgColor: 'bg-blue-50'
+          color: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+          label: 'Medium Priority', 
+          icon: '🟡'
         };
-      case 'DONE':
+      case 'LOW':
         return {
           color: 'bg-green-100 text-green-700 border-green-200',
-          icon: CheckCircle2,
-          iconColor: 'text-green-500',
-          bgColor: 'bg-green-50'
+          label: 'Low Priority',
+          icon: '🟢'
         };
       default:
         return {
           color: 'bg-gray-100 text-gray-700 border-gray-200',
-          icon: Circle,
-          iconColor: 'text-gray-500',
-          bgColor: 'bg-gray-50'
+          label: 'Medium Priority',
+          icon: '⚪'
         };
     }
   };
 
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'TODO':
-        return 'To Do';
-      case 'IN_PROGRESS':
-        return 'In Progress';
-      case 'DONE':
-        return 'Completed';
-      default:
-        return 'Unknown';
+  const isOverdue = (dueDate) => {
+    if (!dueDate) return false;
+    try {
+      let date;
+      if (Array.isArray(dueDate)) {
+        const [year, month, day] = dueDate;
+        date = new Date(year, month - 1, day);
+      } else {
+        date = new Date(dueDate);
+      }
+      return date < new Date() && task.status !== 'DONE';
+    } catch {
+      return false;
     }
   };
+
+
 
   const formatDate = (dateString) => {
     if (!dateString) return null;
@@ -76,7 +78,7 @@ const TaskCard = ({ task, onEdit, onDelete, onStatusChange }) => {
       }
       
       if (isNaN(date.getTime())) {
-        console.warn('Invalid date:', dateString);
+        Logger.warn('Invalid date:', dateString);
         return 'Invalid Date';
       }
       
@@ -86,12 +88,12 @@ const TaskCard = ({ task, onEdit, onDelete, onStatusChange }) => {
         year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
       });
     } catch (error) {
-      console.error('Error formatting date:', error, dateString);
+      Logger.error('Error formatting date:', error, dateString);
       return 'Invalid Date';
     }
   };
 
-  const isCompleted = task.status === 'DONE';
+
 
   return (
     <div className="w-full">
@@ -151,6 +153,35 @@ const TaskCard = ({ task, onEdit, onDelete, onStatusChange }) => {
               </p>
             </div>
           )}
+          
+          {/* Priority and Due Date Section */}
+          <div className="mb-4 space-y-2">
+            {/* Priority Display */}
+            {task.priority && (
+              <div className="flex items-center space-x-2">
+                <span className="text-xs text-gray-500">Priority:</span>
+                <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityConfig(task.priority).color}`}>
+                  {getPriorityConfig(task.priority).icon} {getPriorityConfig(task.priority).label}
+                </span>
+              </div>
+            )}
+            
+            {/* Due Date Display */}
+            {task.dueDate && (
+              <div className="flex items-center space-x-2">
+                <Calendar className="h-4 w-4 text-gray-400" />
+                <span className="text-xs text-gray-500">Due:</span>
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  isOverdue(task.dueDate) 
+                    ? 'bg-red-100 text-red-700 border border-red-200' 
+                    : 'bg-blue-100 text-blue-700 border border-blue-200'
+                }`}>
+                  {isOverdue(task.dueDate) && '⚠️ '}{formatDate(task.dueDate)}
+                </span>
+              </div>
+            )}
+          </div>
+          
           <div className="mt-auto">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs text-gray-500">Status:</span>

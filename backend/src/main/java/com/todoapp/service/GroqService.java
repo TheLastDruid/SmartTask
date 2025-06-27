@@ -15,6 +15,7 @@ import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -122,17 +123,32 @@ public class GroqService {
         String response = callGroq(prompt);
         return parseTasksFromResponse(response);
     }    private String createTaskManagementPrompt(String userMessage) {
+        // Get current date for relative date calculations
+        LocalDateTime now = LocalDateTime.now();
+        String currentDate = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        String currentDayOfWeek = now.getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH);
+        
         return """
-            You are a helpful task management assistant. Analyze the user's message and extract specific information to determine what action they want to perform.
+            You are a helpful task management assistant. Today is %s (%s). Analyze the user's message and extract specific information to determine what action they want to perform.
             
             User message: "%s"
             
             IMPORTANT: Extract ACTUAL information from the user's message. Do NOT use placeholder text.
-              Examples:
+            
+            For dates:
+            - "tomorrow" = %s
+            - "next Monday" = the next upcoming Monday after today
+            - "next week" = 7 days from today (%s)
+            - "in 3 days" = 3 days from today
+            - Always use YYYY-MM-DD format
+            - Ensure dates are in the future, not the past
+            
+            Examples:
             - "Create a task to buy groceries" → taskTitle: "Buy groceries", taskDescription: "Purchase groceries", action: "CREATE_TASK"
-            - "Add task Study Math with Sarah tomorrow at 3pm high priority" → taskTitle: "Study Math with Sarah", taskDescription: "Study session with Sarah", dueDate: "2025-06-23", priority: "HIGH", action: "CREATE_TASK"
+            - "Add task Study Math with Sarah tomorrow at 3pm high priority" → taskTitle: "Study Math with Sarah", taskDescription: "Study session with Sarah", dueDate: "%s", priority: "HIGH", action: "CREATE_TASK"
+            - "Remind me to fix the code next Monday" → taskTitle: "Fix the code", taskDescription: "Fix the code in smart task application", dueDate: "[calculate next Monday from %s]", priority: "HIGH", action: "CREATE_TASK"
             - "Update task buy groceries to high priority" → searchQuery: "buy groceries", priority: "HIGH", action: "UPDATE_TASK"
-            - "Change the due date of math homework to tomorrow" → searchQuery: "math homework", dueDate: "2025-06-23", action: "UPDATE_TASK"
+            - "Change the due date of math homework to tomorrow" → searchQuery: "math homework", dueDate: "%s", action: "UPDATE_TASK"
             - "Mark buy groceries as complete" → searchQuery: "buy groceries", action: "MARK_COMPLETE"
             - "Delete the task study math" → searchQuery: "study math", action: "DELETE_TASK"
             - "Mark all my tasks as done" → action: "BULK_MARK_COMPLETE"
@@ -146,7 +162,8 @@ public class GroqService {
             - Use searchQuery to identify which task the user is referring to
             - Extract any new values they want to change (title, description, priority, dueDate)
             - searchQuery should contain the task name/keywords the user mentioned
-              Possible actions:
+            
+            Possible actions:
             1. CREATE_TASK - User wants to add a new task
             2. LIST_TASKS - User wants to see their tasks  
             3. UPDATE_TASK - User wants to modify an existing task (change title, description, priority, due date)
@@ -168,18 +185,41 @@ public class GroqService {
             
             Extract REAL values from the user's message. If creating a task, the taskTitle must be the actual task name the user wants, not placeholder text.
             For task modifications, searchQuery should contain the actual task name/keywords the user mentioned.
-            """.formatted(userMessage);
+            Calculate relative dates accurately based on today being %s.
+            """.formatted(
+                currentDate, 
+                currentDayOfWeek, 
+                userMessage,
+                now.plusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), // tomorrow
+                now.plusDays(7).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), // next week
+                now.plusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), // tomorrow example
+                currentDate, // for next Monday calculation
+                now.plusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), // tomorrow example
+                currentDate // current date for calculations
+            );
     }
 
     private String createTaskExtractionPrompt(String text) {
+        // Get current date for relative date calculations
+        LocalDateTime now = LocalDateTime.now();
+        String currentDate = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        
         return """
-            Extract potential tasks and action items from the following text. Look for:
+            Extract potential tasks and action items from the following text. Today is %s. Look for:
             - Action verbs (schedule, call, send, review, prepare, etc.)
-            - Deadlines and dates
+            - Deadlines and dates (calculate relative dates based on today)
             - Assignments and responsibilities
             - Things that need to be done
             
             Text: "%s"
+            
+            For dates:
+            - Use YYYY-MM-DD format
+            - Calculate relative dates based on today being %s
+            - "tomorrow" = %s
+            - "next week" = %s
+            - "next Monday" = the next upcoming Monday
+            - Ensure all dates are in the future, not the past
             
             Respond with JSON format containing an array of tasks:
             {
@@ -195,7 +235,13 @@ public class GroqService {
             
             If no actionable tasks are found, return:
             {"tasks": []}
-            """.formatted(text);
+            """.formatted(
+                currentDate,
+                text,
+                currentDate,
+                now.plusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                now.plusDays(7).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+            );
     }    private String callGroq(String prompt) throws IOException {
         if (groqApiKey == null || groqApiKey.trim().isEmpty()) {
             throw new RuntimeException("Groq API key is not configured. Please set groq.api.key in application.properties");
@@ -297,9 +343,20 @@ public class GroqService {
                     String dueDateStr = getJsonString(taskNode, "dueDate");
                     if (dueDateStr != null && !dueDateStr.equals("null")) {
                         try {
-                            task.setDueDate(LocalDateTime.parse(dueDateStr + "T10:00:00"));
+                            LocalDateTime parsedDate = LocalDateTime.parse(dueDateStr + "T10:00:00");
+                            
+                            // Validate that the date is not in the past
+                            LocalDateTime now = LocalDateTime.now();
+                            if (parsedDate.isBefore(now.toLocalDate().atStartOfDay())) {
+                                logger.warn("Parsed date {} is in the past, setting to null", dueDateStr);
+                                task.setDueDate(null);
+                            } else {
+                                task.setDueDate(parsedDate);
+                                logger.debug("Successfully set due date: {}", parsedDate);
+                            }
                         } catch (Exception e) {
                             logger.debug("Error parsing due date: {}", dueDateStr);
+                            task.setDueDate(null);
                         }
                     }
                     

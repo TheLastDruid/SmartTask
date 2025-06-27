@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { getCurrentUser, logout as authLogout } from '../services/authService';
+import Logger from '../utils/logger';
 
 const AuthContext = createContext();
 
@@ -18,29 +19,29 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      console.log('AuthContext initializeAuth starting...');
+      Logger.debug('AuthContext initializeAuth starting...');
       try {
         const token = localStorage.getItem('token');
-        console.log('Token from localStorage:', token ? 'present' : 'missing');
+        Logger.debug('Token from localStorage:', token ? 'present' : 'missing');
         if (token) {
-          console.log('Calling getCurrentUser...');
+          Logger.debug('Calling getCurrentUser...');
           const currentUser = await getCurrentUser();
-          console.log('getCurrentUser successful, user:', currentUser);
+          Logger.debug('getCurrentUser successful, user:', currentUser);
           setUser(currentUser);
           setIsAuthenticated(true);
-          console.log('AuthContext initialized, isAuthenticated set to true');
+          Logger.info('AuthContext initialized, isAuthenticated set to true');
         } else {
-          console.log('No token found, user not authenticated');
+          Logger.debug('No token found, user not authenticated');
         }
       } catch (error) {
-        console.error('Failed to initialize auth:', error);
+        Logger.error('Failed to initialize auth:', error);
         localStorage.removeItem('token');
         setUser(null);
         setIsAuthenticated(false);
-        console.log('AuthContext initialization failed, isAuthenticated set to false');
+        Logger.warn('AuthContext initialization failed, isAuthenticated set to false');
       } finally {
         setLoading(false);
-        console.log('AuthContext initialization completed, loading set to false');
+        Logger.debug('AuthContext initialization completed, loading set to false');
       }
     };
 
@@ -48,17 +49,17 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = (userData, token) => {
-    console.log('AuthContext login called with:', { userData, token: token ? 'present' : 'missing' });
+    Logger.debug('AuthContext login called with:', { userData, token: token ? 'present' : 'missing' });
     localStorage.setItem('token', token);
     setUser(userData);
     setIsAuthenticated(true);
-    console.log('AuthContext login completed, isAuthenticated set to true');
+    Logger.info('AuthContext login completed, isAuthenticated set to true');
   };
   const logout = () => {
     authLogout();
     setUser(null);
     setIsAuthenticated(false);
-    console.log('User logged out');
+    Logger.info('User logged out');
   };
 
   const clearAuth = () => {
@@ -66,7 +67,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('user');
     setUser(null);
     setIsAuthenticated(false);
-    console.log('Auth data cleared');
+    Logger.info('Auth data cleared');
   };
 
   const updateUser = (userData) => {

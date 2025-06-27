@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import webSocketService from '../services/webSocketService';
 import { toast } from 'react-toastify';
+import Logger from '../utils/logger';
 
 export const useRealTimeTasks = (initialTasks = []) => {
   const [tasks, setTasks] = useState(initialTasks);
@@ -25,12 +26,12 @@ export const useRealTimeTasks = (initialTasks = []) => {
     return () => clearInterval(interval);
   }, []);  // Handle real-time task updates
   const handleTaskUpdate = useCallback((message) => {
-    console.log('🔔 Frontend received task update:', message);
+    Logger.debug('Frontend received task update:', message);
     const { action, data, taskId, type } = message;
     
     // Handle bulk updates
     if (type === 'BULK_TASK_UPDATE') {
-      console.log('Processing bulk task update:', action, data);
+      Logger.debug('Processing bulk task update:', action, data);
       setTasks(prevTasks => {
         switch (action) {
           case 'BULK_MARK_COMPLETE': {
@@ -115,7 +116,7 @@ export const useRealTimeTasks = (initialTasks = []) => {
   // Register message handlers when user is available
   useEffect(() => {
     if (user?.id) {
-      console.log('Registering real-time message handlers for user:', user.id);
+      Logger.debug('Registering real-time message handlers for user:', user.id);
 
       // Register message handlers (connection is already handled by WebSocketDebugger)
       const removeTaskHandler = webSocketService.onMessage('tasks', handleTaskUpdate);
@@ -124,7 +125,7 @@ export const useRealTimeTasks = (initialTasks = []) => {
 
       // Cleanup on unmount or user change
       return () => {
-        console.log('Cleaning up real-time message handlers');
+        Logger.debug('Cleaning up real-time message handlers');
         removeTaskHandler();
         removeNotificationHandler();
         removeSystemNotificationHandler();
@@ -141,7 +142,7 @@ export const useRealTimeTasks = (initialTasks = []) => {
   const refreshTasks = useCallback(async () => {
     // This would typically call your task service to fetch fresh data
     // You can implement this based on your existing task fetching logic
-    console.log('Refreshing tasks...');
+    Logger.debug('Refreshing tasks...');
   }, []);
 
   return {
