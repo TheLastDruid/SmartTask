@@ -7,6 +7,8 @@ import com.todoapp.dto.RegisterRequest;
 import com.todoapp.model.User;
 import com.todoapp.repository.UserRepository;
 import java.time.LocalDateTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -17,6 +19,8 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
 
     @Autowired
     private AuthenticationManager authenticationManager;
@@ -69,9 +73,8 @@ public class AuthService {
             emailService.sendVerificationEmail(user.getEmail(), user.getFirstName(), verificationToken);
         } catch (Exception e) {
             // Log email sending failure but don't delete user for development testing
-            System.out.println("WARNING: Failed to send verification email to " + user.getEmail() + 
-                             ". Error: " + e.getMessage() + 
-                             ". User created but email not sent. Verification token: " + verificationToken);
+            logger.warn("Failed to send verification email to {}: {}. User created but email not sent. Verification token: {}", 
+                       user.getEmail(), e.getMessage(), verificationToken);
         }
 
         // Don't generate JWT token - user must verify email first

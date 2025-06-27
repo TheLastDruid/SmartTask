@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.todoapp.dto.*;
 import com.todoapp.model.TaskStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,7 +16,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 @Service
-public class ChatBotService {    @Autowired
+public class ChatBotService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(ChatBotService.class);    @Autowired
     private GroqService groqService;
 
     @Autowired
@@ -26,8 +30,9 @@ public class ChatBotService {    @Autowired
     @Autowired
     private ChatConversationService chatConversationService;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();    public ChatResponse processMessage(ChatRequest request, String userId) {        try {
-            System.out.println("DEBUG: ChatBotService processing message: " + request.getMessage());
+    private final ObjectMapper objectMapper = new ObjectMapper();    public ChatResponse processMessage(ChatRequest request, String userId) {
+        try {
+            logger.debug("Processing message from user {}: {}", userId, request.getMessage());
             
             // Save user message to conversation
             String conversationId = request.getConversationId();
@@ -37,16 +42,15 @@ public class ChatBotService {    @Autowired
             chatConversationService.saveMessage(userId, conversationId, "user", request.getMessage());
             
             String response = groqService.processUserMessage(request.getMessage(), userId);
-            System.out.println("DEBUG: Groq response: " + response);
+            logger.debug("Received response from Groq service for user {}", userId);
             
             ChatResponse chatResponse = parseAndExecuteAction(response, userId, conversationId);
-              // Save assistant response to conversation
+            // Save assistant response to conversation
             chatConversationService.saveMessage(userId, conversationId, "assistant", chatResponse.getMessage());
             
             return chatResponse;
         } catch (Exception e) {
-            System.err.println("ERROR: Exception in ChatBotService.processMessage: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error processing message for user {}: {}", userId, e.getMessage(), e);
             return new ChatResponse("Sorry, I encountered an error processing your request. Please try again.", 
                                   request.getConversationId());
         }
@@ -150,7 +154,7 @@ public class ChatBotService {    @Autowired
         }
     }    private ChatResponse handleCreateTask(JsonNode responseJson, String userId, String conversationId) {
         try {
-            System.out.println("DEBUG: handleCreateTask called with JSON: " + responseJson.toString());
+            logger.debug("handleCreateTask called with JSON: {}", responseJson.toString());
             
             TaskRequest taskRequest = new TaskRequest();
             
@@ -165,13 +169,13 @@ public class ChatBotService {    @Autowired
             
             // Validate that we have at least a title
             if (title.trim().isEmpty()) {
-                System.out.println("DEBUG: No title provided, returning error message");
+                logger.debug("No title provided, returning error message");
                 return new ChatResponse("I need more details to create a task. Please tell me what you'd like to accomplish.", conversationId);
             }
             
             // Skip creation if we get template text instead of real values
             if (title.contains("extracted task title") || title.contains("if creating")) {
-                System.out.println("DEBUG: Detected template text, skipping task creation");
+                logger.debug("Detected template text, skipping task creation");
                 return new ChatResponse("I understand you want to create a task. Could you please provide more specific details about what you'd like to accomplish?", conversationId);
             }
             
@@ -183,46 +187,46 @@ public class ChatBotService {    @Autowired
             if (dueDateNode != null && !dueDateNode.isNull()) {
                 try {
                     String dateString = dueDateNode.asText();
-                    System.out.println("DEBUG: Parsing date string: " + dateString);
+                    logger.debug("Parsing date string: {}", dateString);
                     
                     // Skip if it's template text
                     if (dateString.contains("extracted") || dateString.contains("YYYY-MM-DD")) {
-                        System.out.println("DEBUG: Detected template date text, setting to null");
+                        logger.debug("Detected template date text, setting to null");
                         taskRequest.setDueDate(null);
                     } else {
                         // Try parsing as just date first (YYYY-MM-DD)
                         try {
                             LocalDateTime dueDate = LocalDateTime.parse(dateString + "T00:00:00");
                             taskRequest.setDueDate(dueDate);
-                            System.out.println("DEBUG: Successfully parsed date: " + dueDate);
+                            logger.debug("Successfully parsed date: {}", dueDate);
                         } catch (Exception e1) {
                             // Try as full datetime
                             try {
                                 LocalDateTime dueDate = LocalDateTime.parse(dateString, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
                                 taskRequest.setDueDate(dueDate);
-                                System.out.println("DEBUG: Successfully parsed datetime: " + dueDate);
+                                logger.debug("Successfully parsed datetime: {}", dueDate);
                             } catch (Exception e2) {
-                                System.out.println("DEBUG: Date parsing failed, setting to null: " + e2.getMessage());
+                                logger.debug("Date parsing failed, setting to null: {}", e2.getMessage());
                                 taskRequest.setDueDate(null);
                             }
                         }
                     }
                 } catch (Exception e) {
-                    System.out.println("DEBUG: Date parsing exception: " + e.getMessage());
+                    logger.debug("Date parsing exception: {}", e.getMessage());
                     taskRequest.setDueDate(null);
                 }
             }
 
-            System.out.println("DEBUG: Creating task with title: " + taskRequest.getTitle());
+            logger.debug("Creating task with title: {}", taskRequest.getTitle());
             TaskResponse created = taskService.createTask(taskRequest, userId);
-            System.out.println("DEBUG: Task created successfully with ID: " + created.getId());
+            logger.info("Task created successfully with ID: {}", created.getId());
             
             return new ChatResponse(
                 String.format("✅ I've created the task '%s' for you!", created.getTitle()),
                 conversationId
             );
         } catch (Exception e) {
-            System.err.println("ERROR: Exception in handleCreateTask: " + e.getMessage());
+            logger.error("Exception in handleCreateTask: {}", e.getMessage(), e);
             e.printStackTrace();
             return new ChatResponse("Sorry, I couldn't create the task. Please try again.", conversationId);
         }
@@ -325,7 +329,7 @@ public class ChatBotService {    @Autowired
             }
             
         } catch (Exception e) {
-            System.err.println("ERROR: Exception in handleTaskModification: " + e.getMessage());
+            logger.error("Exception in handleTaskModification: {}", e.getMessage(), e);
             e.printStackTrace();
             String message = switch (action) {
                 case "UPDATE_TASK" -> "Sorry, I couldn't update the task. Please try again with the task name.";
@@ -386,7 +390,7 @@ public class ChatBotService {    @Autowired
                     changesSummary.append(String.format("• Due date: %s\n", dateString));
                     hasUpdates = true;
                 } catch (Exception e) {
-                    System.out.println("DEBUG: Could not parse due date: " + dateString);
+                    logger.debug("Could not parse due date: {}", dateString);
                 }
             }
             
@@ -403,7 +407,7 @@ public class ChatBotService {    @Autowired
             return new ChatResponse(message, conversationId);
             
         } catch (Exception e) {
-            System.err.println("ERROR: Exception in handleUpdateTask: " + e.getMessage());
+            logger.error("Exception in handleUpdateTask: {}", e.getMessage(), e);
             e.printStackTrace();
             return new ChatResponse(String.format("Sorry, I couldn't update the task '%s'. Please try again.", targetTask.getTitle()), conversationId);
         }
@@ -422,7 +426,7 @@ public class ChatBotService {    @Autowired
             }
             
         } catch (Exception e) {
-            System.err.println("ERROR: Exception in handleBulkMarkComplete: " + e.getMessage());
+            logger.error("Exception in handleBulkMarkComplete: {}", e.getMessage(), e);
             e.printStackTrace();
             return new ChatResponse("Sorry, I couldn't mark all tasks as complete. Please try again.", conversationId);
         }

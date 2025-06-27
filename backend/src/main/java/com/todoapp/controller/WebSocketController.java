@@ -2,7 +2,10 @@ package com.todoapp.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.todoapp.service.RedisPublisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.data.redis.listener.ChannelTopic;
@@ -16,8 +19,10 @@ import jakarta.annotation.PostConstruct;
 import java.util.Map;
 
 @Controller
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "${app.frontend.url:http://localhost:3000}")
 public class WebSocketController implements MessageListener {
+
+    private static final Logger logger = LoggerFactory.getLogger(WebSocketController.class);
 
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
@@ -40,8 +45,8 @@ public class WebSocketController implements MessageListener {
             String channel = new String(pattern);
             String messageBody = new String(message.getBody());
             
-            System.out.println("🔔 WebSocket received Redis message on channel: " + channel);
-            System.out.println("📨 Message body: " + messageBody);
+            logger.debug("WebSocket received Redis message on channel: {}", channel);
+            logger.debug("Message body: {}", messageBody);
             
             // Parse the Redis message
             Map<String, Object> messageData = objectMapper.readValue(messageBody, Map.class);
@@ -50,13 +55,11 @@ public class WebSocketController implements MessageListener {
             routeMessage(channel, messageData);
             
         } catch (Exception e) {
-            System.err.println("Error processing Redis message: " + e.getMessage());
+            logger.error("Error processing Redis message: {}", e.getMessage(), e);
         }
     }
 
     private void routeMessage(String channel, Map<String, Object> messageData) {
-        String messageType = (String) messageData.get("type");
-        
         switch (channel) {
             case "task_updates":
                 handleTaskUpdate(messageData);
@@ -77,8 +80,8 @@ public class WebSocketController implements MessageListener {
     }    private void handleTaskUpdate(Map<String, Object> messageData) {
         String userId = (String) messageData.get("userId");
         
-        System.out.println("📤 Sending task update to user: " + userId);
-        System.out.println("📋 Task data: " + messageData);
+        logger.debug("Sending task update to user: {}", userId);
+        logger.debug("Task data: {}", messageData);
         
         // Send to specific user
         try {
@@ -87,17 +90,17 @@ public class WebSocketController implements MessageListener {
                 "/queue/tasks", 
                 messageData
             );
-            System.out.println("✅ Successfully sent to user " + userId + " at /user/" + userId + "/queue/tasks");
+            logger.debug("Successfully sent to user {} at /user/{}/queue/tasks", userId, userId);
         } catch (Exception e) {
-            System.err.println("❌ Error sending to user " + userId + ": " + e.getMessage());
+            logger.error("Error sending to user {}: {}", userId, e.getMessage(), e);
         }
         
         // Also broadcast to general task topic for dashboard updates
         try {
             messagingTemplate.convertAndSend("/topic/tasks", messageData);
-            System.out.println("✅ Successfully broadcast to /topic/tasks");
+            logger.debug("Successfully broadcast to /topic/tasks");
         } catch (Exception e) {
-            System.err.println("❌ Error broadcasting to /topic/tasks: " + e.getMessage());
+            logger.error("Error broadcasting to /topic/tasks: {}", e.getMessage(), e);
         }
     }
 

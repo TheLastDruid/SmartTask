@@ -1,5 +1,7 @@
 package com.todoapp.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.PropertiesPropertySource;
@@ -12,6 +14,8 @@ import java.util.Properties;
 
 @Configuration
 public class EnvironmentConfig {
+
+    private static final Logger logger = LoggerFactory.getLogger(EnvironmentConfig.class);
 
     private final ConfigurableEnvironment environment;
 
@@ -34,7 +38,7 @@ public class EnvironmentConfig {
             }
             
             if (envFile.exists()) {
-                System.out.println("Loading .env file from: " + envFile.getAbsolutePath());
+                logger.info("Loading .env file from: {}", envFile.getAbsolutePath());
                 Properties props = new Properties();
                 try (FileInputStream fis = new FileInputStream(envFile)) {
                     props.load(fis);
@@ -44,18 +48,18 @@ public class EnvironmentConfig {
                 PropertiesPropertySource propertySource = new PropertiesPropertySource("env-file", props);
                 environment.getPropertySources().addFirst(propertySource);
                 
-                System.out.println("Loaded " + props.size() + " properties from .env file");
+                logger.info("Loaded {} properties from .env file", props.size());
                 
                 // Debug: Print GROQ API key status
                 String groqKey = props.getProperty("GROQ_API_KEY");
-                System.out.println("GROQ_API_KEY loaded: " + (groqKey != null ? "YES (length: " + groqKey.length() + ")" : "NO"));
+                logger.debug("GROQ_API_KEY loaded: {}", groqKey != null ? "YES (length: " + groqKey.length() + ")" : "NO");
             } else {
-                System.out.println("No .env file found. Checked paths:");
-                System.out.println("  - " + new File("../.env").getAbsolutePath());
-                System.out.println("  - " + new File(".env").getAbsolutePath());
+                logger.warn("No .env file found. Checked paths:");
+                logger.warn("  - {}", new File("../.env").getAbsolutePath());
+                logger.warn("  - {}", new File(".env").getAbsolutePath());
             }
         } catch (IOException e) {
-            System.err.println("Error loading .env file: " + e.getMessage());
+            logger.error("Error loading .env file: {}", e.getMessage(), e);
         }
     }
 }

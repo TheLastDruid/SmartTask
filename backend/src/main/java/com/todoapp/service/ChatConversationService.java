@@ -3,6 +3,8 @@ package com.todoapp.service;
 import com.todoapp.model.ChatConversation;
 import com.todoapp.model.ChatMessage;
 import com.todoapp.repository.ChatConversationRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -13,6 +15,8 @@ import java.util.Optional;
 
 @Service
 public class ChatConversationService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(ChatConversationService.class);
     
     @Autowired
     private ChatConversationRepository conversationRepository;
@@ -104,10 +108,10 @@ public class ChatConversationService {
             
             if (!expired.isEmpty()) {
                 conversationRepository.deleteAll(expired);
-                System.out.println("Cleaned up " + expired.size() + " expired conversations");
+                logger.info("Cleaned up {} expired conversations", expired.size());
             }
         } catch (Exception e) {
-            System.err.println("Error during conversation cleanup: " + e.getMessage());
+            logger.error("Error during conversation cleanup: {}", e.getMessage(), e);
         }
     }
 }

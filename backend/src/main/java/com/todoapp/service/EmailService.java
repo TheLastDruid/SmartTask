@@ -11,15 +11,26 @@ public class EmailService {
 
     @Autowired
     private JavaMailSender mailSender;
+    
+    @Autowired
+    private TestMailService testMailService;
 
     @Value("${spring.mail.from:noreply@smarttask.com}")
     private String fromEmail;
 
     @Value("${app.frontend.url:http://localhost:3000}")
     private String frontendUrl;
-
-    public void sendVerificationEmail(String toEmail, String firstName, String verificationToken) {
+    
+    @Value("${app.email.use-testmail:true}")
+    private boolean useTestMail;    public void sendVerificationEmail(String toEmail, String firstName, String verificationToken) {
         try {
+            // Use testmail.app if configured, otherwise use traditional SMTP
+            if (useTestMail && testMailService.isConfigured()) {
+                testMailService.sendVerificationEmail(toEmail, firstName, verificationToken);
+                return;
+            }
+            
+            // Fallback to traditional SMTP
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromEmail);
             message.setTo(toEmail);
@@ -45,10 +56,15 @@ public class EmailService {
         } catch (Exception e) {
             throw new RuntimeException("Failed to send verification email: " + e.getMessage());
         }
-    }
-
-    public void sendPasswordResetEmail(String toEmail, String firstName, String resetToken) {
+    }    public void sendPasswordResetEmail(String toEmail, String firstName, String resetToken) {
         try {
+            // Use testmail.app if configured, otherwise use traditional SMTP
+            if (useTestMail && testMailService.isConfigured()) {
+                testMailService.sendPasswordResetEmail(toEmail, firstName, resetToken);
+                return;
+            }
+            
+            // Fallback to traditional SMTP
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromEmail);
             message.setTo(toEmail);

@@ -72,7 +72,7 @@ const WebSocketDebugger = ({ isVisible, onClose }) => {
   const testRedisIntegration = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8080/api/tasks/test-redis', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/tasks/test-redis`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

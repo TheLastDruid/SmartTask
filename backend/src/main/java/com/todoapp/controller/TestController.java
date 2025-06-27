@@ -1,7 +1,10 @@
 package com.todoapp.controller;
 
 import com.todoapp.service.RedisPublisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,8 +16,13 @@ import java.util.Map;
 @CrossOrigin(origins = "*", maxAge = 3600)
 public class TestController {
 
+    private static final Logger logger = LoggerFactory.getLogger(TestController.class);
+
     @Autowired(required = false)
     private RedisPublisher redisPublisher;
+
+    @Value("${server.port:8080}")
+    private String serverPort;
 
     @GetMapping("/test-connection")
     public Map<String, Object> testConnection() {
@@ -22,7 +30,7 @@ public class TestController {
         response.put("status", "success");
         response.put("message", "Backend is running correctly");
         response.put("timestamp", System.currentTimeMillis());
-        response.put("port", "8080");
+        response.put("port", serverPort);
         return response;
     }    /**
      * Test endpoint to publish a Redis message directly
@@ -51,7 +59,7 @@ public class TestController {
             // Publish Redis message using the correct method signature
             if (redisPublisher != null) {
                 redisPublisher.publishTaskUpdate(userId, (String) taskData.get("id"), "CREATE", taskData);
-                System.out.println("🔔 Published Redis message for user: " + userId);
+                logger.debug("Published Redis message for user: {}", userId);
             }
 
             Map<String, Object> response = new HashMap<>();
@@ -88,7 +96,7 @@ public class TestController {
             // Publish Redis message that will be broadcast to /topic/tasks (all clients)
             if (redisPublisher != null) {
                 redisPublisher.publishTaskUpdate("broadcast", (String) taskData.get("id"), "CREATE", taskData);
-                System.out.println("🔔 Published broadcast Redis message");
+                logger.debug("Published broadcast Redis message");
             }
 
             Map<String, Object> response = new HashMap<>();

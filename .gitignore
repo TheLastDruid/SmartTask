@@ -126,6 +126,10 @@ test_*.ps1
 *.bak
 *.tmp
 
+# Setup and test scripts (keep setup scripts, exclude test scripts)
+!setup_*.ps1
+!setup_*.sh
+
 # Environment and configuration backups
 docker-compose-*.yml
 !docker-compose.yml
@@ -133,3 +137,6 @@ docker-compose-*.yml
 # AI Agent Instructions (internal development documentation)
 AI_AGENT_INSTRUCTIONS.md
 EMAIL_VERIFICATION_STATUS.md
+
+# Cleanup and progress tracking (internal development documentation)
+CLEANUP_PROGRESS_SUMMARY.md

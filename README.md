@@ -61,7 +61,28 @@ npm install -g pnpm
 ./setup_groq.sh YOUR_GROQ_API_KEY
 ```
 
-### 4. Start the Application
+### 4. Setup Email Testing (Optional)
+Choose one of these options for email verification:
+
+**Option A: TestMail.app (Recommended for Development)**
+```bash
+# Setup testmail.app for email testing
+.\setup_testmail.ps1
+```
+- No real email required
+- Perfect for testing and CI/CD
+- Free tier: 100 emails/month
+- Sign up at: https://testmail.app/signup/
+
+**Option B: Gmail SMTP (Traditional)**
+```bash
+# Setup Gmail SMTP for real emails
+.\setup_email.ps1
+```
+- Requires Gmail account with App Password
+- Sends real emails to users
+
+### 5. Start the Application
 ```bash
 # Using Docker (Recommended)
 docker-compose up --build
@@ -70,12 +91,12 @@ docker-compose up --build
 start.bat  # Windows
 ```
 
-### 5. Access the Application
+### 6. Access the Application
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8080
 - **MongoDB**: localhost:27017
 
-### 6. Login
+### 7. Login
 Default test credentials:
 - **Email**: test@test.com
 - **Password**: investor
@@ -162,6 +183,18 @@ cleanup.bat
 - `GROQ_API_KEY`: Your Groq API key
 - `MONGODB_URI`: MongoDB connection string (default: localhost:27017)
 - `JWT_SECRET`: JWT signing secret (auto-generated for development)
+
+### Email Configuration
+**TestMail.app (Recommended for Development)**
+- `TESTMAIL_API_KEY`: Your testmail.app API key
+- `TESTMAIL_NAMESPACE`: Your testmail.app namespace
+- `USE_TESTMAIL`: Enable testmail.app (default: true)
+
+**Gmail SMTP (Production)**
+- `MAIL_USERNAME`: Gmail address
+- `MAIL_PASSWORD`: Gmail app password
+- `MAIL_FROM`: From email address
+- `FRONTEND_URL`: Frontend URL for email links
 
 ### Groq Model Configuration
 Current model: `llama-3.1-8b-instant`
