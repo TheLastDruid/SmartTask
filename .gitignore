@@ -140,3 +140,7 @@ EMAIL_VERIFICATION_STATUS.md
 
 # Cleanup and progress tracking (internal development documentation)
 CLEANUP_PROGRESS_SUMMARY.md
+
+# Documentation files (exclude all .md files except README.md)
+*.md
+!README.md

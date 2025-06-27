@@ -12,13 +12,13 @@ import {
   Minimize2,
   Maximize2
 } from 'lucide-react';
-import { toast } from 'react-toastify';
 import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from '../context/AuthContext';
 import chatService from '../services/chatService';
+import notificationService from '../utils/notificationService';
 import Logger from '../utils/logger';
 
-const ChatBot = () => {
+const ChatBot = ({ onTaskUpdate }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);  const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -99,17 +99,17 @@ const ChatBot = () => {
       try {
         localStorage.setItem(`chatbot-conversation-${convId}`, JSON.stringify([welcomeMessage]));
       } catch (error) {
-        console.error('Error saving welcome message to localStorage:', error);
+        Logger.error('Error saving welcome message to localStorage:', error);
       }
     }
   }, [user]);
 
   // Load conversation from backend on component mount, fallback to localStorage
   useEffect(() => {
-    console.log('DEBUG: useEffect triggered, user:', user?.id, 'conversationId:', conversationId);
+    Logger.debug('useEffect triggered, user:', user?.id, 'conversationId:', conversationId);
     if (user && user.id && !conversationId) {
       const mainConversationId = `main_${user.id}`;
-      console.log('DEBUG: Setting conversation ID:', mainConversationId);
+      Logger.debug('Setting conversation ID:', mainConversationId);
       setConversationId(mainConversationId);
       loadConversationHistory(mainConversationId);
     }
@@ -121,7 +121,7 @@ const ChatBot = () => {
         localStorage.setItem(`chatbot-conversation-${conversationId}`, JSON.stringify(messagesToSave));
       }
     } catch (error) {
-      console.error('Error saving conversation:', error);
+      Logger.error('Error saving conversation:', error);
     }
   };
 
@@ -139,12 +139,12 @@ const ChatBot = () => {
       timestamp: new Date(),
       ...additionalData
     };
-    console.log('DEBUG: Adding message:', newMessage);
-    console.log('DEBUG: Current messages before add:', messages.length);
+    Logger.debug('Adding message:', newMessage);
+    Logger.debug('Current messages before add:', messages.length);
     
     setMessages(prevMessages => {
       const updatedMessages = [...prevMessages, newMessage];
-      console.log('DEBUG: Updated messages after add:', updatedMessages.length);
+      Logger.debug('Updated messages after add:', updatedMessages.length);
       // Save to localStorage in the state setter to ensure it happens after state update
       setTimeout(() => saveConversation(updatedMessages), 0);
       return updatedMessages;
@@ -168,6 +168,28 @@ const ChatBot = () => {
       // Add bot response
       addMessage('bot', response.message);
 
+      // Check if this was a task-related action and refresh tasks
+      const taskActions = ['CREATE', 'UPDATE', 'DELETE', 'MARK_COMPLETE', 'BULK_MARK_COMPLETE'];
+      const isTaskAction = taskActions.some(action => 
+        response.message.includes('✅') || 
+        response.message.includes('created') ||
+        response.message.includes('updated') ||
+        response.message.includes('deleted') ||
+        response.message.includes('completed') ||
+        response.message.includes('marked')
+      );
+
+      if (isTaskAction && onTaskUpdate) {
+        // Trigger task refresh in parent component
+        Logger.debug('Task action detected, triggering refresh');
+        onTaskUpdate();
+        
+        // Show brief success notification for task operations
+        if (response.message.includes('✅')) {
+          notificationService.chatResponse('Task updated successfully');
+        }
+      }
+
       // Handle special actions
       if (response.suggestedTasks && response.suggestedTasks.length > 0) {
         setPendingTasks(response.suggestedTasks);
@@ -175,8 +197,9 @@ const ChatBot = () => {
       }
 
     } catch (error) {
-      console.error('Error sending message:', error);
+      Logger.error('Error sending message:', error);
       addMessage('bot', 'Sorry, I\'m having trouble connecting right now. Please try again in a moment.');
+      notificationService.error('Failed to send message. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -191,7 +214,7 @@ const ChatBot = () => {
     const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
     
     if (!allowedTypes.includes(fileExtension)) {
-      toast.error('Please upload a .txt, .pdf, or .docx file');
+      notificationService.error('Please upload a .txt, .pdf, or .docx file');
       return;
     }    setIsLoading(true);
     addMessage('user', `📎 Uploaded file: ${file.name}`, { isFile: true });
@@ -209,7 +232,7 @@ const ChatBot = () => {
       }
 
     } catch (error) {
-      console.error('Error uploading file:', error);
+      Logger.error('Error uploading file:', error);
       addMessage('bot', 'Sorry, I couldn\'t process that file. Please make sure it\'s a valid .txt, .pdf, or .docx file.');
     } finally {
       setIsLoading(false);
@@ -242,12 +265,13 @@ const ChatBot = () => {
       const response = await chatService.confirmTasks(taskRequests);
       addMessage('bot', response.message);
       
-      toast.success(`Successfully added ${pendingTasks.length} tasks!`);
+      // Less intrusive success notification
+      notificationService.taskUpdate(`${pendingTasks.length} tasks added`);
       
     } catch (error) {
-      console.error('Error confirming tasks:', error);
+      Logger.error('Error confirming tasks:', error);
       addMessage('bot', 'Sorry, I couldn\'t add those tasks. Please try again.');
-      toast.error('Failed to add tasks');
+      notificationService.error('Failed to add tasks');
     } finally {
       setPendingTasks([]);
       setShowTaskConfirmation(false);
@@ -285,7 +309,7 @@ const ChatBot = () => {
       try {
         localStorage.setItem(`chatbot-conversation-${conversationId}`, JSON.stringify([welcomeMessage]));
       } catch (error) {
-        console.error('Error saving welcome message to localStorage:', error);
+        Logger.error('Error saving welcome message to localStorage:', error);
       }
     }  };
   
@@ -294,7 +318,7 @@ const ChatBot = () => {
       {!isOpen && (
         <button
           onClick={toggleChatBot}
-          className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-2xl z-[1001] transition-all duration-300 hover:scale-110 hover:shadow-blue-500/25"
+          className="fixed bottom-4 right-4 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg z-[1001] transition-all duration-300 hover:scale-105"
           title="Open Smart Assistant"
         >
           <MessageCircle size={24} />

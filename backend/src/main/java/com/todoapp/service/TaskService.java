@@ -20,7 +20,10 @@ public class TaskService {
     private TaskRepository taskRepository;
 
     @Autowired
-    private RedisPublisher redisPublisher;    public List<TaskResponse> getAllTasksForUser(String userId) {
+    private RedisPublisher redisPublisher;
+
+    @Autowired
+    private SequenceGeneratorService sequenceGeneratorService;    public List<TaskResponse> getAllTasksForUser(String userId) {
         // Try to get from cache first
         Object cachedTasks = redisPublisher.getCachedUserTasks(userId);
         if (cachedTasks != null) {
@@ -50,6 +53,10 @@ public class TaskService {
         task.setDueDate(taskRequest.getDueDate());
         task.setPriority(taskRequest.getPriority());
         task.setUserId(userId);
+        
+        // Generate and assign ticket number
+        Integer ticketNumber = sequenceGeneratorService.generateSequence("task_ticket");
+        task.setTicketNumber(ticketNumber);
 
         Task savedTask = taskRepository.save(task);
         TaskResponse taskResponse = new TaskResponse(savedTask);
@@ -98,6 +105,13 @@ public class TaskService {
 
     public TaskResponse getTaskById(String taskId, String userId) {
         Task task = taskRepository.findByIdAndUserId(taskId, userId)
+            .orElseThrow(() -> new RuntimeException("Task not found"));
+        
+        return new TaskResponse(task);
+    }
+
+    public TaskResponse getTaskByTicketNumber(Integer ticketNumber, String userId) {
+        Task task = taskRepository.findByTicketNumberAndUserId(ticketNumber, userId)
             .orElseThrow(() -> new RuntimeException("Task not found"));
         
         return new TaskResponse(task);

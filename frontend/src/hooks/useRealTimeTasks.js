@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import webSocketService from '../services/webSocketService';
-import { toast } from 'react-toastify';
+import notificationService from '../utils/notificationService';
 import Logger from '../utils/logger';
 
 export const useRealTimeTasks = (initialTasks = []) => {
@@ -33,18 +33,20 @@ export const useRealTimeTasks = (initialTasks = []) => {
     if (type === 'BULK_TASK_UPDATE') {
       Logger.debug('Processing bulk task update:', action, data);
       setTasks(prevTasks => {
-        switch (action) {
-          case 'BULK_MARK_COMPLETE': {
-            // Mark all specified tasks as complete
-            const updatedTaskIds = data.map(task => task.id);
-            const updatedTasks = prevTasks.map(task => 
-              updatedTaskIds.includes(task.id) 
-                ? { ...task, status: 'DONE' }
-                : task
-            );
-            toast.success(`${data.length} tasks marked as complete!`, { position: 'bottom-right' });
-            return updatedTasks;
+        switch (action) {        case 'BULK_MARK_COMPLETE': {
+          // Mark all specified tasks as complete
+          const updatedTaskIds = data.map(task => task.id);
+          const updatedTasks = prevTasks.map(task => 
+            updatedTaskIds.includes(task.id) 
+              ? { ...task, status: 'DONE' }
+              : task
+          );
+          // Show less intrusive notification for bulk completion
+          if (data.length > 1) {
+            notificationService.taskUpdate(`${data.length} tasks completed`);
           }
+          return updatedTasks;
+        }
           default:
             return prevTasks;
         }
@@ -52,38 +54,43 @@ export const useRealTimeTasks = (initialTasks = []) => {
       return;
     }
     
-    // Handle individual task updates
-    setTasks(prevTasks => {
-      switch (action) {case 'CREATE': {
-          // Add new task if it doesn't exist
-          if (!prevTasks.find(task => task.id === data.id)) {
-            toast.success('New task created!', { position: 'bottom-right' });
-            return [...prevTasks, data];
+  // Handle individual task updates
+  setTasks(prevTasks => {
+    switch (action) {      case 'CREATE': {
+        // Add new task if it doesn't exist
+        if (!prevTasks.find(task => task.id === data.id)) {
+          // Only show notification for tasks created by others (not current user)
+          if (data.userId !== user?.id) {
+            notificationService.realTimeUpdate('New task added');
           }
-          return prevTasks;
+          return [...prevTasks, data];
         }
-          
-        case 'UPDATE': {
-          // Update existing task
-          const updatedTasks = prevTasks.map(task => 
-            task.id === data.id ? { ...task, ...data } : task
-          );
-          toast.info('Task updated!', { position: 'bottom-right' });
-          return updatedTasks;
-        }
-          
-        case 'DELETE': {
-          // Remove deleted task
-          const filteredTasks = prevTasks.filter(task => task.id !== taskId);
-          toast.warning('Task deleted!', { position: 'bottom-right' });
-          return filteredTasks;
-        }
-          
-        default:
-          return prevTasks;
+        return prevTasks;
       }
-    });
-  }, []);
+        
+      case 'UPDATE': {
+        // Update existing task
+        const updatedTasks = prevTasks.map(task => 
+          task.id === data.id ? { ...task, ...data } : task
+        );
+        // Don't show notification for real-time updates to reduce noise
+        return updatedTasks;
+      }
+        
+      case 'DELETE': {
+        // Remove deleted task
+        const filteredTasks = prevTasks.filter(task => task.id !== taskId);
+        // Show notification for all deletions - deduplication handled by notificationService
+        Logger.debug('DELETE case triggered, showing notification');
+        notificationService.success('Task deleted');
+        return filteredTasks;
+      }
+        
+      default:
+        return prevTasks;
+    }
+  });
+  }, [user?.id]);
 
   // Handle notifications
   const handleNotification = useCallback((message) => {
@@ -91,26 +98,23 @@ export const useRealTimeTasks = (initialTasks = []) => {
     
     switch (type) {
       case 'INFO':
-        toast.info(notificationMessage);
+        notificationService.info(notificationMessage);
         break;
       case 'WARNING':
-        toast.warning(notificationMessage);
+        notificationService.warning(notificationMessage);
         break;
       case 'ERROR':
-        toast.error(notificationMessage);
+        notificationService.error(notificationMessage);
         break;
       default:
-        toast(notificationMessage);
+        notificationService.info(notificationMessage);
     }
   }, []);
 
   // Handle system notifications
   const handleSystemNotification = useCallback((message) => {
     if (message.broadcast) {
-      toast.info(message.message, { 
-        position: 'top-center',
-        autoClose: false 
-      });
+      notificationService.info(message.message);
     }
   }, []);
   // Register message handlers when user is available
@@ -131,7 +135,7 @@ export const useRealTimeTasks = (initialTasks = []) => {
         removeSystemNotificationHandler();
       };
     }
-  }, [user?.id, handleTaskUpdate, handleNotification, handleSystemNotification]);
+  }, [user?.id]); // Remove the function dependencies to prevent constant re-registration
 
   // Update tasks when initialTasks change
   useEffect(() => {

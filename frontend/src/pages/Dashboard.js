@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { toast } from 'react-toastify';
-import { Plus, Filter, Search, CheckCircle2, Clock, Circle, Loader2, Wifi, WifiOff } from 'lucide-react';
+import { Plus, Filter, CheckCircle2, Clock, Circle, Loader2, Wifi, WifiOff, Search } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import TaskCard from '../components/TaskCard';
 import TaskModal from '../components/TaskModal';
@@ -8,6 +7,8 @@ import ChatBot from '../components/ChatBot';
 import WebSocketDebugger from '../components/WebSocketDebugger';
 import { taskService } from '../services/taskService';
 import { useRealTimeTasks } from '../hooks/useRealTimeTasks';
+import notificationService from '../utils/notificationService';
+import Logger from '../utils/logger';
 
 const Dashboard = () => {
   const [initialTasks, setInitialTasks] = useState([]);
@@ -46,15 +47,31 @@ const Dashboard = () => {
       setInitialTasks(response.data);
       setTasks(response.data);
     } catch (error) {
-      console.error('Error fetching tasks:', error);
-      toast.error('Failed to fetch tasks');
+      Logger.error('Error fetching tasks:', error);
+      notificationService.error('Failed to fetch tasks');
     } finally {
       setLoading(false);
     }
   }, [setTasks]);
 
+  // Add task refresh function for ChatBot to call
+  const refreshTasks = useCallback(async () => {
+    Logger.debug('Refreshing tasks after chat operation');
+    try {
+      const response = await taskService.getAllTasks();
+      setTasks(response.data);
+      Logger.debug('Tasks refreshed successfully');
+    } catch (error) {
+      Logger.error('Error refreshing tasks:', error);
+    }
+  }, [setTasks]);
+
   useEffect(() => {
     fetchTasks();
+    // Test notification
+    setTimeout(() => {
+      notificationService.info('Dashboard loaded - test notification');
+    }, 1000);
   }, [fetchTasks]);
   useEffect(() => {
     filterTasks();
@@ -64,10 +81,10 @@ const Dashboard = () => {
     try {
       const response = await taskService.createTask(taskData);
       setTasks(prev => [response.data, ...prev]);
-      toast.success('Task created successfully!');
+      notificationService.success('Task created', { autoClose: 1500 });
     } catch (error) {
-      console.error('Error creating task:', error);
-      toast.error('Failed to create task');
+      Logger.error('Error creating task:', error);
+      notificationService.error('Failed to create task');
     }
   };
 
@@ -77,11 +94,11 @@ const Dashboard = () => {
       setTasks(prev => prev.map(task => 
         task.id === editingTask.id ? response.data : task
       ));
-      toast.success('Task updated successfully!');
+      notificationService.success('Task updated');
       setEditingTask(null);
     } catch (error) {
-      console.error('Error updating task:', error);
-      toast.error('Failed to update task');
+      Logger.error('Error updating task:', error);
+      notificationService.error('Failed to update task');
     }
   };
 
@@ -93,24 +110,46 @@ const Dashboard = () => {
     try {
       await taskService.deleteTask(taskId);
       setTasks(prev => prev.filter(task => task.id !== taskId));
-      toast.success('Task deleted successfully!');
+      // Show notification immediately - WebSocket might not trigger for own actions
+      notificationService.success('Task deleted');
     } catch (error) {
-      console.error('Error deleting task:', error);
-      toast.error('Failed to delete task');
+      Logger.error('Error deleting task:', error);
+      notificationService.error('Failed to delete task');
     }
   };
 
   const handleStatusChange = async (taskId, newStatus) => {
     try {
       const task = tasks.find(t => t.id === taskId);
-      const response = await taskService.updateTask(taskId, { ...task, status: newStatus });
+      
+      // Only send the necessary fields for the update
+      const updateData = {
+        title: task.title,
+        description: task.description,
+        status: newStatus,
+        dueDate: task.dueDate,
+        priority: task.priority
+      };
+      
+      const response = await taskService.updateTask(taskId, updateData);
       setTasks(prev => prev.map(t => 
         t.id === taskId ? response.data : t
       ));
-      toast.success('Task status updated!');
+      // Much less intrusive - only show occasionally and briefly
+      if (Math.random() > 0.85) { // Only show 15% of the time
+        notificationService.taskUpdate('Task updated');
+      }
     } catch (error) {
-      console.error('Error updating task status:', error);
-      toast.error('Failed to update task status');
+      Logger.error('Error updating task status:', error);
+      
+      // Check if this is an authentication error
+      if (error.response?.status === 401) {
+        notificationService.error('Authentication error. Please log in again.');
+      } else if (error.response?.status === 403) {
+        notificationService.error('Permission denied. You may not have access to update this task.');
+      } else {
+        notificationService.error(`Failed to update task status: ${error.response?.data?.message || error.message}`);
+      }
     }
   };
 
@@ -261,17 +300,19 @@ const Dashboard = () => {
                 <label htmlFor="filter" className="text-sm font-semibold text-gray-700">
                   Filter:
                 </label>
-                <select
-                  id="filter"
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                  className="input-field py-2 w-auto min-w-36 border-gray-300 rounded-lg shadow-sm"
-                >
-                  <option value="ALL">All Tasks</option>
-                  <option value="TODO">To Do</option>
-                  <option value="IN_PROGRESS">In Progress</option>
-                  <option value="DONE">Completed</option>
-                </select>
+                <div className="relative">
+                  <select
+                    id="filter"
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                    className="select-field py-3 w-auto min-w-44 border-gray-300 rounded-lg"
+                  >
+                    <option value="ALL" className="py-3 bg-white text-gray-900">All Tasks</option>
+                    <option value="TODO" className="py-3 bg-white text-gray-900">To Do</option>
+                    <option value="IN_PROGRESS" className="py-3 bg-white text-gray-900">In Progress</option>
+                    <option value="DONE" className="py-3 bg-white text-gray-900">Completed</option>
+                  </select>
+                </div>
               </div>
             </div>
             
@@ -338,7 +379,7 @@ const Dashboard = () => {
         task={editingTask}
         isEditing={!!editingTask}
       />      {/* ChatBot - Available for authenticated users on dashboard */}
-      <ChatBot />
+      <ChatBot onTaskUpdate={refreshTasks} />
       
       {/* WebSocket Debugger - Temporary for debugging */}
       <WebSocketDebugger 

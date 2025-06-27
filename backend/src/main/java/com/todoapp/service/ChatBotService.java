@@ -244,8 +244,9 @@ public class ChatBotService {
             StringBuilder message = new StringBuilder("Here are your current tasks:\n\n");
             for (int i = 0; i < tasks.size(); i++) {
                 TaskResponse task = tasks.get(i);
-                message.append(String.format("%d. %s (%s)\n", 
-                    i + 1, task.getTitle(), task.getStatus()));
+                String ticketDisplay = task.getTicketNumber() != null ? "#" + task.getTicketNumber() + " " : "";
+                message.append(String.format("%d. %s%s (%s)\n", 
+                    i + 1, ticketDisplay, task.getTitle(), task.getStatus()));
                 
                 if (task.getDueDate() != null) {
                     message.append(String.format("   Due: %s\n", task.getDueDate()));
@@ -280,11 +281,38 @@ public class ChatBotService {
             String searchTerm = searchQuery != null ? searchQuery : taskTitle;
             
             if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-                // Search for task by title (case-insensitive partial match)
-                for (TaskResponse task : allTasks) {
-                    if (task.getTitle().toLowerCase().contains(searchTerm.toLowerCase())) {
-                        targetTask = task;
-                        break;
+                // First, try to find by ticket number if the search term contains a number
+                if (searchTerm.matches(".*\\b\\d+\\b.*")) {
+                    try {
+                        // Extract number from search term (looking for patterns like "#123", "ticket 123", "task 123", etc.)
+                        String numberPattern = "\\b(\\d+)\\b";
+                        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(numberPattern);
+                        java.util.regex.Matcher matcher = pattern.matcher(searchTerm);
+                        
+                        if (matcher.find()) {
+                            Integer ticketNumber = Integer.parseInt(matcher.group(1));
+                            logger.debug("Attempting to find task by ticket number: {}", ticketNumber);
+                            
+                            try {
+                                targetTask = taskService.getTaskByTicketNumber(ticketNumber, userId);
+                                logger.debug("Found task by ticket number: {}", targetTask.getTitle());
+                            } catch (RuntimeException e) {
+                                logger.debug("No task found with ticket number: {}", ticketNumber);
+                                // Continue to search by title if ticket number not found
+                            }
+                        }
+                    } catch (NumberFormatException e) {
+                        logger.debug("Could not parse ticket number from: {}", searchTerm);
+                    }
+                }
+                
+                // If not found by ticket number, search for task by title (case-insensitive partial match)
+                if (targetTask == null) {
+                    for (TaskResponse task : allTasks) {
+                        if (task.getTitle().toLowerCase().contains(searchTerm.toLowerCase())) {
+                            targetTask = task;
+                            break;
+                        }
                     }
                 }
             }
@@ -295,7 +323,8 @@ public class ChatBotService {
                 message.append("I couldn't find a specific task to modify. Here are your current tasks:\n\n");
                 for (int i = 0; i < allTasks.size(); i++) {
                     TaskResponse task = allTasks.get(i);
-                    message.append(String.format("%d. %s (%s)\n", i + 1, task.getTitle(), task.getStatus()));
+                    String ticketDisplay = task.getTicketNumber() != null ? "#" + task.getTicketNumber() + " " : "";
+                    message.append(String.format("%d. %s%s (%s)\n", i + 1, ticketDisplay, task.getTitle(), task.getStatus()));
                 }
                 message.append("\nPlease specify which task you'd like to ").append(
                     switch (action) {
@@ -304,7 +333,7 @@ public class ChatBotService {
                         case "MARK_COMPLETE" -> "mark as complete";
                         default -> "modify";
                     }
-                ).append(" by mentioning its name.");
+                ).append(" by mentioning its name or ticket number (e.g., 'update task #123').");
                 
                 return new ChatResponse(message.toString(), conversationId);
             }

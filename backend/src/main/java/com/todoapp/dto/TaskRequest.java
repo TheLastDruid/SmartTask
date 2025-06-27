@@ -1,10 +1,12 @@
 package com.todoapp.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.todoapp.model.TaskStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class TaskRequest {
     @NotBlank(message = "Title is required")
     @Size(max = 100, message = "Title must not exceed 100 characters")

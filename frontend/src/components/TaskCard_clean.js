@@ -200,23 +200,11 @@ const TaskCard = ({ task, onEdit, onDelete, onStatusChange }) => {
 
   return (
     <div className="w-full">
-      <div 
-        className={`bg-white rounded-xl shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${statusConfig.borderColor} border-l-4 min-h-[300px] ${statusConfig.bgColor} cursor-pointer hover:bg-gray-50`}
-        onDoubleClick={() => onEdit(task)}
-        aria-label={`Double-click to edit ${task.title}`}
-        title="Double-click to edit this task"
-      >
+      <div className={`bg-white rounded-xl shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${statusConfig.borderColor} border-l-4 min-h-[300px] ${statusConfig.bgColor}`}>
         <div className="p-6 h-full flex flex-col">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-start space-x-3 flex-1 min-w-0">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-2 mb-1">
-                  {task.ticketNumber && (
-                    <span className="text-xs font-mono px-2 py-1 bg-gray-100 text-gray-600 rounded-md border">
-                      #{task.ticketNumber}
-                    </span>
-                  )}
-                </div>
                 <h3 className={`text-lg font-semibold transition-all duration-200 leading-tight break-words ${statusConfig.textColor}`} 
                     aria-level="3"
                     aria-label={`${task.title} - ${statusConfig.accessibilityLabel}`}>
@@ -312,18 +300,16 @@ const TaskCard = ({ task, onEdit, onDelete, onStatusChange }) => {
           <div className="mt-auto">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs text-gray-500 font-medium">Status:</span>
-              <div className="relative">
-                <select
-                  value={task.status}
-                  onChange={(e) => onStatusChange(task.id, e.target.value)}
-                  className={`select-compact ${statusConfig.statusBadge}`}
-                  aria-label={`Change status for task ${task.title}. Current status: ${statusConfig.accessibilityLabel}`}
-                >
-                  <option value="TODO" className="py-2 bg-white text-gray-900">To Do</option>
-                  <option value="IN_PROGRESS" className="py-2 bg-white text-gray-900">In Progress</option>
-                  <option value="DONE" className="py-2 bg-white text-gray-900">Completed</option>
-                </select>
-              </div>
+              <select
+                value={task.status}
+                onChange={(e) => onStatusChange(task.id, e.target.value)}
+                className={`text-xs border rounded-md px-3 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 font-medium ${statusConfig.statusBadge}`}
+                aria-label={`Change status for task ${task.title}. Current status: ${statusConfig.accessibilityLabel}`}
+              >
+                <option value="TODO">📋 To Do</option>
+                <option value="IN_PROGRESS">⏳ In Progress</option>
+                <option value="DONE">✅ Completed</option>
+              </select>
             </div>
             <div className="text-xs text-gray-400 flex items-center justify-between pt-2 border-t border-gray-100">
               <span>Created {formatDate(task.createdAt)}</span>
